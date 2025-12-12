@@ -39,7 +39,7 @@ const ShareAnalyzer = () => {
     setError(null);
     
   try{
-    const response = await fetch('https://stock-analyzer-backend-83mw.onrender.com', {
+    const response = await fetch('https://stock-analyzer-backend-83mw.onrender.com/api/analyze', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ ticker: ticker.toUpperCase() })
