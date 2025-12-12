@@ -10,6 +10,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import re
+import pandas as pd
 
 def strip_html_tags(text):
     """Remove HTML tags from text"""

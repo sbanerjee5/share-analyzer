@@ -10,6 +10,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import re
+import pandas as pd
 
 def strip_html_tags(text):
     """Remove HTML tags from text"""
@@ -37,7 +38,7 @@ app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 # CORS configuration for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "https://magnificent-figolla-37a50b.netlify.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
