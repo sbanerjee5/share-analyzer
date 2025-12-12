@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import yfinance as yf
+import pandas as pd 
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -607,18 +608,27 @@ class KPICalculator:
             }
         }
         
-        # Get 12-month historical price data
+        # Get 12-month historical price data WITH MOVING AVERAGES
         historical_prices = []
         try:
             hist_data = data.get('history')
             if hist_data is not None and not hist_data.empty and 'Close' in hist_data.columns:
                 hist_12m = hist_data.tail(252)
-                for date, row in hist_12m.iterrows():
+                
+                # Calculate moving averages
+                # 50-day MA
+                ma_50 = hist_12m['Close'].rolling(window=50, min_periods=1).mean()
+                # 200-day MA  
+                ma_200 = hist_12m['Close'].rolling(window=200, min_periods=1).mean()
+                
+                for i, (date, row) in enumerate(hist_12m.iterrows()):
                     historical_prices.append({
                         'date': date.strftime('%Y-%m-%d'),
-                        'price': round(float(row['Close']), 2)
+                        'price': round(float(row['Close']), 2),
+                        'ma_50': round(float(ma_50.iloc[i]), 2) if not pd.isna(ma_50.iloc[i]) else None,
+                        'ma_200': round(float(ma_200.iloc[i]), 2) if not pd.isna(ma_200.iloc[i]) else None
                     })
-                print(f"Fetched {len(historical_prices)} historical price points")
+                print(f"Fetched {len(historical_prices)} historical price points with moving averages")
             else:
                 print("No historical data available")
         except Exception as e:
