@@ -22,6 +22,7 @@ const ShareAnalyzer = () => {
   const [emailInput, setEmailInput] = useState('');
   const [emailSubmitting, setEmailSubmitting] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // News filter state
   const [sentimentFilter, setSentimentFilter] = useState(null);
@@ -154,6 +155,10 @@ const ShareAnalyzer = () => {
         localStorage.setItem('userData', JSON.stringify(userData));
         
         setShowEmailModal(false);
+        setShowSuccessMessage(true);  // ← ADD THIS
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => setShowSuccessMessage(false), 3000);  // ← ADD THIS
         
         // Clear form
         setFirstName('');
@@ -161,9 +166,9 @@ const ShareAnalyzer = () => {
         setEmailInput('');
         setValidationError('');
         
-        // Now analyze the stock they wanted
-        analyzeStock();
+        // DON'T call analyzeStock() here - removed to prevent modal reopening
       } else {
+
         setValidationError(data.message || 'Failed to save information. Please try again.');
       }
     } catch (err) {
@@ -1467,6 +1472,22 @@ const ShareAnalyzer = () => {
             </div>
           </div>
         )}
+
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="fixed top-4 right-4 z-50 animate-fadeIn">
+            <div className="bg-green-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+              <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                <span className="text-green-500 font-bold">✓</span>
+              </div>
+              <div>
+                <div className="font-semibold">Access Granted!</div>
+                <div className="text-sm text-green-100">You can now analyze unlimited stocks</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Welcome Message - Shows before any analysis */}
         {!analysis && !loading && (
           <div className="text-center py-16 px-4">
