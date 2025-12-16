@@ -531,12 +531,25 @@ class KPICalculator:
         ) if profit_margin_pct else 5
         
         # 8. Dividend Yield
+        # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
-        dividend_yield_pct = dividend_yield * 100 if dividend_yield else None
+
+        # Smart conversion - handle both decimal and percentage formats
+        if dividend_yield:
+            # If value is already > 1, it's likely already a percentage
+            if dividend_yield > 1:
+                dividend_yield_pct = dividend_yield
+            else:
+                # If value is < 1, it's a decimal, convert to percentage
+                dividend_yield_pct = dividend_yield * 100
+        else:
+            dividend_yield_pct = None
+
         dy_score = self.calculate_score(
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
         ) if dividend_yield_pct is not None else 5
+        
         
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
