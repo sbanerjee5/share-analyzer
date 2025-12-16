@@ -13,6 +13,7 @@ import re
 import pandas as pd
 import json
 import os
+import resend
 
 def strip_html_tags(text):
     """Remove HTML tags from text"""
@@ -37,6 +38,8 @@ def strip_html_tags(text):
 
 # Email capture configuration
 EMAIL_FILE = "captured_emails.json"
+RESEND_API_KEY = "re_M6r5K7TS_78V5xrfBLekcXuNujPV7a8MV"  # Replace with your actual key
+resend.api_key = RESEND_API_KEY
 
 app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 
@@ -887,6 +890,110 @@ def clear_cache():
         "message": "Cache cleared",
         "timestamp": datetime.now().isoformat()
     }
+def send_welcome_email(first_name: str, email: str):
+    """
+    Send welcome email to new user
+    """
+    try:
+        # HTML email template
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                    border-radius: 10px 10px 0 0;
+                }}
+                .content {{
+                    background: #f9fafb;
+                    padding: 30px;
+                    border-radius: 0 0 10px 10px;
+                }}
+                .button {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+                    color: white;
+                    padding: 12px 30px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                }}
+                .footer {{
+                    text-align: center;
+                    color: #666;
+                    font-size: 12px;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📈 Welcome to Stock Analyzer!</h1>
+            </div>
+            <div class="content">
+                <h2>Hi {first_name},</h2>
+                <p>Thank you for signing up! You now have <strong>unlimited access</strong> to:</p>
+                <ul>
+                    <li>✅ Analyze 200+ UK & US stocks (FTSE 100/250, S&P 500)</li>
+                    <li>✅ 12 comprehensive KPIs with intelligent scoring</li>
+                    <li>✅ Price charts with 50-day & 200-day moving averages</li>
+                    <li>✅ Latest news with AI sentiment analysis</li>
+                    <li>✅ Buy/Hold/Sell recommendations</li>
+                    <li>✅ PDF report generation</li>
+                </ul>
+                <p style="text-align: center;">
+                    <a href="https://magnificent-figolla-37a50b.netlify.app" class="button">Start Analyzing Stocks</a>
+                </p>
+                <p><strong>Pro Tips:</strong></p>
+                <ul>
+                    <li>📊 Check the Overall Score (0-100) for quick insights</li>
+                    <li>📰 Use news filters to focus on specific sentiment or categories</li>
+                    <li>💾 Download PDF reports for offline analysis</li>
+                    <li>📈 Watch for moving average crossovers for trading signals</li>
+                </ul>
+                <p>Have questions or feedback? Just reply to this email - we'd love to hear from you!</p>
+                <p>Happy analyzing!</p>
+                <p><strong>The Stock Analyzer Team</strong></p>
+            </div>
+            <div class="footer">
+                <p>You're receiving this email because you signed up for Stock Analyzer.</p>
+                <p>Stock Analyzer | <a href="https://magnificent-figolla-37a50b.netlify.app">magnificent-figolla-37a50b.netlify.app</a></p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send email via Resend
+        params = {
+            "from": "Stock Analyzer <onboarding@resend.dev>",  # Use resend.dev for testing
+            "to": [email],
+            "subject": f"Welcome to Stock Analyzer, {first_name}! 🎉",
+            "html": html_content
+        }
+        
+        response = resend.Emails.send(params)
+        print(f"✓ Welcome email sent to {email} (ID: {response['id']})")
+        return True
+        
+    except Exception as e:
+        print(f"✗ Failed to send email to {email}: {str(e)}")
+        # Don't raise exception - we don't want email failure to break signup
+        return False
+    
 @app.post("/api/capture-email")
 def capture_email(email_data: dict):
     """
@@ -957,11 +1064,15 @@ def capture_email(email_data: dict):
         print(f"✓ Captured new lead: {first_name} {last_name} <{email}> (source: {source})")
         print(f"  Total leads: {len(leads)}")
         
+        # Send welcome email
+        email_sent = send_welcome_email(first_name, email)
+
         return {
             'success': True,
             'message': 'Information captured successfully',
             'new_signup': True,
-            'total_leads': len(leads)
+            'total_leads': len(leads),
+            'email_sent': email_sent
         }
         
     except HTTPException as he:
