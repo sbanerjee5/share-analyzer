@@ -13,6 +13,16 @@ const ShareAnalyzer = () => {
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState(null);
 
+  // Email gate state
+  const [analysisCount, setAnalysisCount] = useState(0);
+  const [userEmail, setUserEmail] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
   // News filter state
   const [sentimentFilter, setSentimentFilter] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
@@ -32,8 +42,33 @@ const ShareAnalyzer = () => {
     return true;
   }) : [];
 
+  // Load saved user email from localStorage
+  React.useEffect(() => {
+    const savedEmail = localStorage.getItem('userEmail');
+    const savedUserData = localStorage.getItem('userData');
+    
+    if (savedEmail) {
+      setUserEmail(savedEmail);
+    }
+    
+    if (savedUserData) {
+      try {
+        const userData = JSON.parse(savedUserData);
+        console.log('Welcome back,', userData.firstName, userData.lastName);
+      } catch (e) {
+        console.error('Error parsing user data:', e);
+      }
+    }
+  }, []);
+
   const analyzeStock = async () => {
     if (!ticker.trim()) return;
+    
+    // Check if user has reached limit and needs to provide email
+    if (analysisCount >= 1 && !userEmail) {
+      setShowEmailModal(true);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -49,6 +84,7 @@ const ShareAnalyzer = () => {
       
       if (data.success) {
         setAnalysis(data);
+        setAnalysisCount(prev => prev + 1); // Increment analysis counter
       } else {
         setError('Failed to analyze stock');
       }
@@ -59,6 +95,83 @@ const ShareAnalyzer = () => {
     }
   };
 
+  const submitEmail = async () => {
+    // Clear previous errors
+    setValidationError('');
+    
+    // Validate First Name (mandatory)
+    if (!firstName.trim()) {
+      setValidationError('First Name is required');
+      return;
+    }
+    
+    // Validate First Name (at least 2 characters)
+    if (firstName.trim().length < 2) {
+      setValidationError('First Name must be at least 2 characters');
+      return;
+    }
+    
+    // Validate Email (mandatory)
+    if (!emailInput.trim()) {
+      setValidationError('Email is required');
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailInput)) {
+      setValidationError('Please enter a valid email address');
+      return;
+    }
+    
+    setEmailSubmitting(true);
+    
+    try {
+      const response = await fetch('https://stock-analyzer-backend-83mw.onrender.com/api/capture-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: emailInput.trim().toLowerCase(),
+          source: 'email_gate',
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Store user data in state and localStorage
+        const userData = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: emailInput.trim().toLowerCase()
+        };
+        
+        setUserEmail(emailInput.trim().toLowerCase());
+        localStorage.setItem('userEmail', emailInput.trim().toLowerCase());
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        setShowEmailModal(false);
+        
+        // Clear form
+        setFirstName('');
+        setLastName('');
+        setEmailInput('');
+        setValidationError('');
+        
+        // Now analyze the stock they wanted
+        analyzeStock();
+      } else {
+        setValidationError(data.message || 'Failed to save information. Please try again.');
+      }
+    } catch (err) {
+      setValidationError('Error saving information. Please try again.');
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       analyzeStock();
@@ -1249,7 +1362,111 @@ const ShareAnalyzer = () => {
             </div>
           </div>
         )}
-
+        {/* Email Gate Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-2xl p-8 max-w-md w-full border-2 border-blue-500/50 shadow-2xl animate-fadeIn">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Unlock Unlimited Analyses
+                </h3>
+                <p className="text-gray-300">
+                  Get free access to analyze unlimited stocks, news, charts, and KPIs. 
+                  Plus, receive weekly market insights in your inbox!
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                {/* First Name - MANDATORY */}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Last Name - OPTIONAL */}
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Email - MANDATORY */}
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Enter Best Email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && submitEmail()}
+                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                {/* Validation Error Message */}
+                {validationError && (
+                  <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-300 text-sm">{validationError}</p>
+                  </div>
+                )}
+                
+                {/* Submit Button */}
+                <button
+                  onClick={submitEmail}
+                  disabled={emailSubmitting || !firstName.trim() || !emailInput.trim()}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold text-white hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {emailSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      Get Free Access
+                    </>
+                  )}
+                </button>
+                
+                {/* Required Fields Notice */}
+                <p className="text-xs text-gray-500 text-center">
+                  <span className="text-red-400">*</span> First Name and Email are required
+                </p>
+                
+                {/* Privacy Notice */}
+                <p className="text-xs text-gray-400 text-center">
+                  We respect your privacy. Unsubscribe anytime. No spam, ever.
+                </p>
+              </div>
+              
+              {/* Maybe Later Button */}
+              <button
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setValidationError('');
+                  setFirstName('');
+                  setLastName('');
+                  setEmailInput('');
+                }}
+                className="mt-4 text-gray-400 hover:text-white text-sm transition-colors w-full text-center"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        )}
         {/* Welcome Message - Shows before any analysis */}
         {!analysis && !loading && (
           <div className="text-center py-16 px-4">

@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import re
 import pandas as pd
+import json
+import os
 
 def strip_html_tags(text):
     """Remove HTML tags from text"""
@@ -32,6 +34,9 @@ def strip_html_tags(text):
     clean_text = ' '.join(clean_text.split())
     
     return clean_text.strip()
+
+# Email capture configuration
+EMAIL_FILE = "captured_emails.json"
 
 app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 
@@ -882,7 +887,112 @@ def clear_cache():
         "message": "Cache cleared",
         "timestamp": datetime.now().isoformat()
     }
+@app.post("/api/capture-email")
+def capture_email(email_data: dict):
+    """
+    Capture user information for lead generation
+    
+    Args:
+        email_data: dict with 'firstName', 'lastName', 'email', 'source', 'timestamp'
+        
+    Returns:
+        Success response
+    """
+    try:
+        first_name = email_data.get('firstName', '').strip()
+        last_name = email_data.get('lastName', '').strip()
+        email = email_data.get('email', '').strip().lower()
+        source = email_data.get('source', 'unknown')
+        timestamp = email_data.get('timestamp', datetime.now().isoformat())
+        
+        # Validate required fields
+        if not first_name:
+            raise HTTPException(status_code=400, detail="First name is required")
+        
+        if len(first_name) < 2:
+            raise HTTPException(status_code=400, detail="First name must be at least 2 characters")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+        
+        # Validate email format
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
+        # Load existing emails
+        if os.path.exists(EMAIL_FILE):
+            with open(EMAIL_FILE, 'r') as f:
+                leads = json.load(f)
+        else:
+            leads = []
+        
+        # Check if email already exists
+        existing_lead = next((lead for lead in leads if lead['email'] == email), None)
+        
+        if existing_lead:
+            print(f"Email already exists: {email}")
+            return {
+                'success': True,
+                'message': 'Email already registered',
+                'new_signup': False
+            }
+        
+        # Add new lead
+        lead_entry = {
+            'firstName': first_name,
+            'lastName': last_name,
+            'email': email,
+            'source': source,
+            'timestamp': timestamp,
+            'captured_at': datetime.now().isoformat()
+        }
+        
+        leads.append(lead_entry)
+        
+        # Save to file
+        with open(EMAIL_FILE, 'w') as f:
+            json.dump(leads, f, indent=2)
+        
+        print(f"✓ Captured new lead: {first_name} {last_name} <{email}> (source: {source})")
+        print(f"  Total leads: {len(leads)}")
+        
+        return {
+            'success': True,
+            'message': 'Information captured successfully',
+            'new_signup': True,
+            'total_leads': len(leads)
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"✗ Error capturing lead: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to capture information: {str(e)}")
 
+
+@app.get("/api/leads")
+def get_leads():
+    """
+    Get all captured leads (admin only - add authentication later)
+    Returns leads with firstName, lastName, email
+    """
+    try:
+        if os.path.exists(EMAIL_FILE):
+            with open(EMAIL_FILE, 'r') as f:
+                leads = json.load(f)
+            return {
+                'success': True,
+                'total': len(leads),
+                'leads': leads
+            }
+        return {
+            'success': True,
+            'total': 0,
+            'leads': []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
