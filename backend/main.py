@@ -14,6 +14,10 @@ import pandas as pd
 import json
 import os
 import resend
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+load_dotenv()
 
 def strip_html_tags(text):
     """Remove HTML tags from text"""
@@ -38,8 +42,13 @@ def strip_html_tags(text):
 
 # Email capture configuration
 EMAIL_FILE = "captured_emails.json"
-RESEND_API_KEY = "re_M6r5K7TS_78V5xrfBLekcXuNujPV7a8MV"  # Replace with your actual key
-resend.api_key = RESEND_API_KEY
+# Email configuration - load from environment variable
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+    print("✓ Resend API key loaded from environment")
+else:
+    print("⚠️ WARNING: RESEND_API_KEY not set - email sending disabled")
 
 app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 
@@ -880,6 +889,15 @@ def health_check():
         "cache_size": len(cache)
     }
 
+@app.get("/api/check-env")
+def check_environment():
+    """Check if environment variables are set (for debugging)"""
+    return {
+        'resend_api_key_set': bool(os.environ.get('RESEND_API_KEY')),
+        'resend_api_key_length': len(os.environ.get('RESEND_API_KEY', '')) if os.environ.get('RESEND_API_KEY') else 0,
+        # Never return the actual key!
+        'environment': os.environ.get('RENDER', 'local')
+    }
 
 @app.post("/api/clear-cache")
 def clear_cache():

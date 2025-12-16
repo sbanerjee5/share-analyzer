@@ -20,3 +20,13 @@ __pycache__/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Environment variables (NEVER commit these!)
+.env
+backend/.env
+frontend/.env
+*.env
+
+# API keys and secrets
+secrets.txt
+api_keys.txt

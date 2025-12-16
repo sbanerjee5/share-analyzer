@@ -6,3 +6,4 @@ numpy
 pydantic
 python-dateutil
 resend
+python-dotenv
