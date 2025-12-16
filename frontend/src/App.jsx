@@ -1371,7 +1371,7 @@ const ShareAnalyzer = () => {
                   <TrendingUp className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">
-                  Unlock Unlimited Analyses
+                  Unlock Unlimited Analysis
                 </h3>
                 <p className="text-gray-300">
                   Get free access to analyze unlimited stocks, news, charts, and KPIs. 
