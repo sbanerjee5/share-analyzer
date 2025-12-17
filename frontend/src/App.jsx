@@ -156,9 +156,9 @@ const ShareAnalyzer = () => {
         
         setShowEmailModal(false);
         setShowSuccessMessage(true);  // ← ADD THIS
-        
-        // Hide success message after 7 seconds
-        setTimeout(() => setShowSuccessMessage(false), 7000);  // ← ADD THIS
+
+        // Hide success message after 10 seconds
+        setTimeout(() => setShowSuccessMessage(false), 10000);  // ← ADD THIS
         
         // Clear form
         setFirstName('');
