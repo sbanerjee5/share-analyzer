@@ -157,7 +157,7 @@ const ShareAnalyzer = () => {
         setShowEmailModal(false);
         setShowSuccessMessage(true);  // ← ADD THIS
         
-        // Hide success message after 3 seconds
+        // Hide success message after 7 seconds
         setTimeout(() => setShowSuccessMessage(false), 7000);  // ← ADD THIS
         
         // Clear form
@@ -1482,7 +1482,8 @@ const ShareAnalyzer = () => {
               </div>
               <div>
                 <div className="font-semibold">Access Granted!</div>
-                <div className="text-sm text-green-100">Welcome email sent. Check your inbox (and spam).</div>
+                <div className="text-sm text-green-100">You can now analyze unlimited stocks!</div>
+                <div className="text-xs text-green-200 mt-1">📧 Welcome email sent - check inbox & spam</div>
               </div>
             </div>
           </div>
