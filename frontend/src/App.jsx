@@ -158,7 +158,7 @@ const ShareAnalyzer = () => {
         setShowSuccessMessage(true);  // ← ADD THIS
         
         // Hide success message after 3 seconds
-        setTimeout(() => setShowSuccessMessage(false), 3000);  // ← ADD THIS
+        setTimeout(() => setShowSuccessMessage(false), 7000);  // ← ADD THIS
         
         // Clear form
         setFirstName('');
@@ -1482,12 +1482,12 @@ const ShareAnalyzer = () => {
               </div>
               <div>
                 <div className="font-semibold">Access Granted!</div>
-                <div className="text-sm text-green-100">You can now analyze unlimited stocks</div>
+                <div className="text-sm text-green-100">Welcome email sent. Check your inbox (and spam).</div>
               </div>
             </div>
           </div>
         )}
-        
+
         {/* Welcome Message - Shows before any analysis */}
         {!analysis && !loading && (
           <div className="text-center py-16 px-4">
