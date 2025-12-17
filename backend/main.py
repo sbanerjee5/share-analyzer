@@ -939,15 +939,18 @@ def send_welcome_email(first_name: str, email: str):
                     padding: 30px;
                     border-radius: 0 0 10px 10px;
                 }}
-                .button {{
+                .button {
                     display: inline-block;
                     background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-                    color: white;
+                    color: #ffffff !important;
                     padding: 12px 30px;
                     text-decoration: none;
                     border-radius: 5px;
                     margin: 20px 0;
-                }}
+                    font-weight: bold;
+                    font-size: 16px;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
                 .footer {{
                     text-align: center;
                     color: #666;
