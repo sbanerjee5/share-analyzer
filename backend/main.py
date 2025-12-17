@@ -1085,8 +1085,10 @@ def capture_email(email_data: dict):
         print(f"✓ Captured new lead: {first_name} {last_name} <{email}> (source: {source})")
         print(f"  Total leads: {len(leads)}")
         
-        # Send welcome email
-        email_sent = send_welcome_email(first_name, email)
+        # Send welcome email (disabled during testing - domain not verified)
+        # email_sent = send_welcome_email(first_name, email)
+        email_sent = False  # Temporarily disabled
+        print(f"ℹ️ Email sending disabled - domain verification required")
 
         return {
             'success': True,
