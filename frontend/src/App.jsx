@@ -1379,7 +1379,7 @@ const ShareAnalyzer = () => {
                   Unlock Unlimited Analysis
                 </h3>
                 <p className="text-gray-300">
-                  Get free access to analyze unlimited stocks, news, charts, and KPIs. 
+                  Get forever free access to analyze unlimited UK and US stocks, news, charts, and KPIs. 
                   Plus, receive weekly market insights in your inbox!
                 </p>
               </div>
