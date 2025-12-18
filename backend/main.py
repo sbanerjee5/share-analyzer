@@ -501,6 +501,12 @@ class KPICalculator:
         
         # 2. P/B Ratio (Price-to-Book)
         pb_ratio = self.safe_get(info, 'priceToBook')
+        
+        # Fix for UK stocks (.L suffix) - yfinance reports prices in pence (GBp)
+        # but book value in pounds, causing P/B to be 100x too high
+        if pb_ratio and ticker.endswith('.L'):
+            pb_ratio = pb_ratio / 100
+        
         pb_score = self.calculate_score(
             pb_ratio if pb_ratio else 999,
             [(1.0, 10), (2.0, 8), (3.0, 6), (5.0, 4), (999, 2)]
