@@ -81,6 +81,7 @@ export const ukStocks = [
   { symbol: "SDR.L", name: "Schroders PLC" },
   { symbol: "RSW.L", name: "Renishaw PLC" },
   { symbol: "SN.L", name: "Smith & Nephew PLC" },
+  { symbol: "TEP.L", name: "Telecom Plus" },
   
   // ============================================
   // AIM & Small-Cap - 25 Growth Stocks
