@@ -70,6 +70,184 @@ class AnalysisRequest(BaseModel):
     """Request model for stock analysis"""
     ticker: str
 
+# Industry/Sector Benchmark Averages
+# These are approximate averages as of late 2024/early 2025
+# Updated periodically based on market conditions
+SECTOR_BENCHMARKS = {
+    'Technology': {
+        'pe_ratio': 28.5,
+        'pb_ratio': 6.5,
+        'roe': 18.5,
+        'profit_margin': 15.2,
+        'operating_margin': 18.5,
+        'debt_to_equity': 0.45,
+        'current_ratio': 1.4,
+        'revenue_growth': 12.5,
+        'eps_growth': 15.0,
+        'beta': 1.15,
+        'dividend_yield': 1.2
+    },
+    'Financial Services': {
+        'pe_ratio': 12.5,
+        'pb_ratio': 1.2,
+        'roe': 12.0,
+        'profit_margin': 20.5,
+        'operating_margin': 25.0,
+        'debt_to_equity': 1.8,
+        'current_ratio': 1.1,
+        'revenue_growth': 6.5,
+        'eps_growth': 8.0,
+        'beta': 1.05,
+        'dividend_yield': 2.8
+    },
+    'Healthcare': {
+        'pe_ratio': 22.0,
+        'pb_ratio': 4.2,
+        'roe': 15.5,
+        'profit_margin': 12.5,
+        'operating_margin': 16.0,
+        'debt_to_equity': 0.55,
+        'current_ratio': 1.6,
+        'revenue_growth': 8.5,
+        'eps_growth': 10.5,
+        'beta': 0.95,
+        'dividend_yield': 1.8
+    },
+    'Consumer Cyclical': {
+        'pe_ratio': 18.5,
+        'pb_ratio': 3.8,
+        'roe': 16.0,
+        'profit_margin': 8.5,
+        'operating_margin': 11.0,
+        'debt_to_equity': 0.75,
+        'current_ratio': 1.3,
+        'revenue_growth': 9.0,
+        'eps_growth': 11.0,
+        'beta': 1.10,
+        'dividend_yield': 1.5
+    },
+    'Consumer Defensive': {
+        'pe_ratio': 20.5,
+        'pb_ratio': 4.5,
+        'roe': 14.0,
+        'profit_margin': 6.5,
+        'operating_margin': 9.5,
+        'debt_to_equity': 0.65,
+        'current_ratio': 1.2,
+        'revenue_growth': 4.5,
+        'eps_growth': 6.0,
+        'beta': 0.70,
+        'dividend_yield': 2.5
+    },
+    'Energy': {
+        'pe_ratio': 15.5,
+        'pb_ratio': 1.8,
+        'roe': 12.5,
+        'profit_margin': 8.0,
+        'operating_margin': 12.5,
+        'debt_to_equity': 0.85,
+        'current_ratio': 1.4,
+        'revenue_growth': 5.5,
+        'eps_growth': 7.5,
+        'beta': 1.20,
+        'dividend_yield': 3.5
+    },
+    'Industrials': {
+        'pe_ratio': 19.0,
+        'pb_ratio': 3.2,
+        'roe': 13.5,
+        'profit_margin': 7.5,
+        'operating_margin': 10.5,
+        'debt_to_equity': 0.70,
+        'current_ratio': 1.5,
+        'revenue_growth': 7.0,
+        'eps_growth': 9.0,
+        'beta': 1.05,
+        'dividend_yield': 2.0
+    },
+    'Basic Materials': {
+        'pe_ratio': 14.5,
+        'pb_ratio': 2.1,
+        'roe': 11.0,
+        'profit_margin': 9.0,
+        'operating_margin': 13.5,
+        'debt_to_equity': 0.60,
+        'current_ratio': 1.8,
+        'revenue_growth': 6.0,
+        'eps_growth': 8.5,
+        'beta': 1.15,
+        'dividend_yield': 2.8
+    },
+    'Communication Services': {
+        'pe_ratio': 16.5,
+        'pb_ratio': 2.8,
+        'roe': 14.5,
+        'profit_margin': 11.5,
+        'operating_margin': 15.5,
+        'debt_to_equity': 0.95,
+        'current_ratio': 1.2,
+        'revenue_growth': 8.0,
+        'eps_growth': 10.0,
+        'beta': 0.90,
+        'dividend_yield': 1.6
+    },
+    'Utilities': {
+        'pe_ratio': 17.5,
+        'pb_ratio': 1.5,
+        'roe': 9.5,
+        'profit_margin': 10.5,
+        'operating_margin': 15.0,
+        'debt_to_equity': 1.2,
+        'current_ratio': 0.9,
+        'revenue_growth': 3.5,
+        'eps_growth': 4.5,
+        'beta': 0.65,
+        'dividend_yield': 3.8
+    },
+    'Real Estate': {
+        'pe_ratio': 25.0,
+        'pb_ratio': 2.0,
+        'roe': 8.5,
+        'profit_margin': 18.5,
+        'operating_margin': 25.0,
+        'debt_to_equity': 1.5,
+        'current_ratio': 1.0,
+        'revenue_growth': 5.0,
+        'eps_growth': 6.5,
+        'beta': 0.85,
+        'dividend_yield': 3.2
+    }
+}
+
+# Market-wide benchmark averages (S&P 500 / FTSE 100 approximation)
+MARKET_BENCHMARKS = {
+    'US': {  # S&P 500 averages
+        'pe_ratio': 22.1,
+        'pb_ratio': 4.2,
+        'roe': 15.2,
+        'profit_margin': 10.5,
+        'operating_margin': 14.0,
+        'debt_to_equity': 0.80,
+        'current_ratio': 1.3,
+        'revenue_growth': 7.5,
+        'eps_growth': 9.5,
+        'beta': 1.0,
+        'dividend_yield': 1.8
+    },
+    'UK': {  # FTSE 100 averages
+        'pe_ratio': 14.5,
+        'pb_ratio': 1.8,
+        'roe': 12.0,
+        'profit_margin': 8.5,
+        'operating_margin': 12.0,
+        'debt_to_equity': 0.70,
+        'current_ratio': 1.2,
+        'revenue_growth': 4.5,
+        'eps_growth': 6.0,
+        'beta': 0.95,
+        'dividend_yield': 3.5
+    }
+}
 
 class KPICalculator:
     """Calculate all 12 KPIs and their scores"""
@@ -733,16 +911,97 @@ class KPICalculator:
             'avg_volume': self.safe_get(info, 'averageVolume')
         }
         
+    def add_benchmarks(self, kpis: dict, sector: str, ticker: str) -> dict:
+        """Add benchmark comparisons to KPIs"""
+        
+        # Determine market (US or UK)
+        market = 'UK' if ticker.endswith('.L') else 'US'
+        market_name = 'FTSE 100' if market == 'UK' else 'S&P 500'
+        
+        # Get market benchmarks
+        market_bench = MARKET_BENCHMARKS.get(market, MARKET_BENCHMARKS['US'])
+        
+        # Get sector benchmarks (fallback to market if sector not found)
+        sector_bench = SECTOR_BENCHMARKS.get(sector, None)
+        
+        # Add benchmarks to each KPI
+        for category, metrics in kpis.items():
+            for kpi_key, kpi_data in metrics.items():
+                if kpi_data['value'] is not None:
+                    # Get market benchmark
+                    market_value = market_bench.get(kpi_key)
+                    
+                    # Get sector benchmark
+                    sector_value = sector_bench.get(kpi_key) if sector_bench else None
+                    
+                    # Calculate comparisons
+                    benchmarks = {}
+                    
+                    if market_value:
+                        # Determine if higher is better or lower is better
+                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta']
+                        
+                        # Calculate percentage difference
+                        diff_pct = ((kpi_data['value'] - market_value) / market_value) * 100
+                        
+                        # Determine if this is good or bad
+                        if lower_is_better:
+                            is_better = kpi_data['value'] < market_value
+                            status = 'cheaper' if kpi_key in ['pe_ratio', 'pb_ratio'] else 'lower'
+                        else:
+                            is_better = kpi_data['value'] > market_value
+                            status = 'higher'
+                        
+                        benchmarks['market'] = {
+                            'name': market_name,
+                            'value': round(market_value, 2),
+                            'diff_pct': round(diff_pct, 1),
+                            'is_better': is_better,
+                            'status': status
+                        }
+                    
+                    if sector_value and sector:
+                        # Calculate percentage difference
+                        diff_pct = ((kpi_data['value'] - sector_value) / sector_value) * 100
+                        
+                        # Determine if higher is better or lower is better
+                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta']
+                        
+                        # Determine if this is good or bad
+                        if lower_is_better:
+                            is_better = kpi_data['value'] < sector_value
+                            status = 'cheaper' if kpi_key in ['pe_ratio', 'pb_ratio'] else 'lower'
+                        else:
+                            is_better = kpi_data['value'] > sector_value
+                            status = 'higher'
+                        
+                        benchmarks['sector'] = {
+                            'name': sector,
+                            'value': round(sector_value, 2),
+                            'diff_pct': round(diff_pct, 1),
+                            'is_better': is_better,
+                            'status': status
+                        }
+                    
+                    # Add benchmarks to KPI data
+                    kpi_data['benchmarks'] = benchmarks
+        
+        return kpis    
+        # Add benchmark comparisons
+        sector = company_overview.get('sector')
+        kpis_with_benchmarks = self.add_benchmarks(kpis, sector, ticker)
+        
         return {
             'company_name': company_name,
             'ticker': ticker,
             'current_price': round(current_price, 2) if current_price else None,
             'currency': currency,
-            'kpis': kpis,
+            'kpis': kpis_with_benchmarks,
             'historical_prices': historical_prices,
             'news': news,
             'company_overview': company_overview
         }
+    
 
 class RecommendationEngine:
     """Generate Buy/Hold/Sell recommendation based on weighted KPI scores"""
