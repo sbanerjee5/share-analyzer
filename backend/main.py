@@ -5,6 +5,7 @@ FastAPI application for analyzing UK stocks
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from numpy import info
 from pydantic import BaseModel
 import yfinance as yf
 from datetime import datetime, timedelta
@@ -664,32 +665,32 @@ class KPICalculator:
         """Calculate all 12 KPIs"""
         data = self.get_stock_data(ticker)
         info = data['info']
-        
+    
         # Extract basic company info
         company_name = self.safe_get(info, 'longName', ticker)
         current_price = self.safe_get(info, 'currentPrice') or self.safe_get(info, 'regularMarketPrice')
         currency = self.safe_get(info, 'currency', 'GBP')
-        
+    
         # 1. P/E Ratio (Price-to-Earnings)
         pe_ratio = self.safe_get(info, 'trailingPE')
         pe_score = self.calculate_score(
             pe_ratio if pe_ratio else 999,
             [(10, 10), (15, 8), (20, 6), (30, 4), (999, 2)]
         ) if pe_ratio else 5
-        
+    
         # 2. P/B Ratio (Price-to-Book)
         pb_ratio = self.safe_get(info, 'priceToBook')
-        
+    
         # Fix for UK stocks (.L suffix) - yfinance reports prices in pence (GBp)
         # but book value in pounds, causing P/B to be 100x too high
         if pb_ratio and ticker.endswith('.L'):
             pb_ratio = pb_ratio / 100
-        
+    
         pb_score = self.calculate_score(
             pb_ratio if pb_ratio else 999,
             [(1.0, 10), (2.0, 8), (3.0, 6), (5.0, 4), (999, 2)]
         ) if pb_ratio else 5
-        
+    
         # 3. ROE (Return on Equity)
         roe = self.safe_get(info, 'returnOnEquity')
         roe_pct = roe * 100 if roe else None
@@ -697,7 +698,7 @@ class KPICalculator:
             roe_pct if roe_pct else -999,
             [(0, 2), (10, 5), (15, 7), (20, 9), (999, 10)]
         ) if roe_pct else 5
-        
+    
         # 4. Debt-to-Equity
         debt_to_equity = self.safe_get(info, 'debtToEquity')
         if debt_to_equity:
@@ -707,14 +708,14 @@ class KPICalculator:
             [(0.3, 10), (0.6, 8), (1.0, 6), (2.0, 4), (999, 2)],
             reverse=True
         ) if debt_to_equity else 5
-        
+    
         # 5. Current Ratio
         current_ratio = self.safe_get(info, 'currentRatio')
         cr_score = self.calculate_score(
             current_ratio if current_ratio else 0,
             [(0.5, 2), (1.0, 5), (1.5, 8), (2.0, 10), (999, 9)]
         ) if current_ratio else 5
-        
+    
         # 6. Revenue Growth
         revenue_growth = self.safe_get(info, 'revenueGrowth')
         revenue_growth_pct = revenue_growth * 100 if revenue_growth else None
@@ -722,7 +723,7 @@ class KPICalculator:
             revenue_growth_pct if revenue_growth_pct else -999,
             [(-10, 2), (0, 4), (5, 6), (10, 8), (999, 10)]
         ) if revenue_growth_pct else 5
-        
+    
         # 7. Profit Margin
         profit_margin = self.safe_get(info, 'profitMargins')
         profit_margin_pct = profit_margin * 100 if profit_margin else None
@@ -730,28 +731,17 @@ class KPICalculator:
             profit_margin_pct if profit_margin_pct else -999,
             [(0, 2), (5, 4), (10, 6), (15, 8), (999, 10)]
         ) if profit_margin_pct else 5
-        
-        # 8. Dividend Yield
+    
         # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
-
-        # Smart conversion - handle both decimal and percentage formats
-        if dividend_yield:
-            # If value is already > 1, it's likely already a percentage
-            if dividend_yield > 1:
-                dividend_yield_pct = dividend_yield
-            else:
-                # If value is < 1, it's a decimal, convert to percentage
-                dividend_yield_pct = dividend_yield * 100
-        else:
-            dividend_yield_pct = None
-
+        # yfinance always returns as decimal (0.0577 = 5.77%), multiply by 100
+        dividend_yield_pct = (dividend_yield * 100) if dividend_yield else None
+        
         dy_score = self.calculate_score(
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
         ) if dividend_yield_pct is not None else 5
-        
-        
+    
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
         earnings_growth_pct = earnings_growth * 100 if earnings_growth else None
@@ -759,14 +749,14 @@ class KPICalculator:
             earnings_growth_pct if earnings_growth_pct else -999,
             [(-10, 2), (0, 4), (10, 6), (20, 8), (999, 10)]
         ) if earnings_growth_pct else 5
-        
+    
         # 10. Beta (Volatility measure)
         beta = self.safe_get(info, 'beta')
         beta_score = self.calculate_score(
             abs(beta - 1.0) if beta else 999,
             [(0.2, 10), (0.5, 8), (0.8, 6), (1.5, 4), (999, 2)]
         ) if beta else 5
-        
+    
         # 11. 52-Week Price Position
         fifty_two_week_high = self.safe_get(info, 'fiftyTwoWeekHigh')
         fifty_two_week_low = self.safe_get(info, 'fiftyTwoWeekLow')
@@ -781,7 +771,7 @@ class KPICalculator:
         else:
             price_position = None
             pp_score = 5
-        
+    
         # 12. Operating Margin
         operating_margin = self.safe_get(info, 'operatingMargins')
         operating_margin_pct = operating_margin * 100 if operating_margin else None
@@ -851,7 +841,7 @@ class KPICalculator:
                 },
             }
         }
-        
+    
         # Get 12-month historical price data WITH MOVING AVERAGES
         historical_prices = []
         try:
@@ -910,7 +900,21 @@ class KPICalculator:
             'volume': self.safe_get(info, 'volume'),
             'avg_volume': self.safe_get(info, 'averageVolume')
         }
+    
+        # Add benchmark comparisons
+        sector = company_overview.get('sector')
+        kpis_with_benchmarks = self.add_benchmarks(kpis, sector, ticker)
         
+        return {
+            'company_name': company_name,
+            'ticker': ticker,
+            'current_price': round(current_price, 2) if current_price else None,
+            'currency': currency,
+            'kpis': kpis_with_benchmarks,
+            'historical_prices': historical_prices,
+            'news': news,
+            'company_overview': company_overview
+        }
     def add_benchmarks(self, kpis: dict, sector: str, ticker: str) -> dict:
         """Add benchmark comparisons to KPIs"""
         
@@ -986,22 +990,8 @@ class KPICalculator:
                     # Add benchmarks to KPI data
                     kpi_data['benchmarks'] = benchmarks
         
-        return kpis    
-        # Add benchmark comparisons
-        sector = company_overview.get('sector')
-        kpis_with_benchmarks = self.add_benchmarks(kpis, sector, ticker)
+        return kpis
         
-        return {
-            'company_name': company_name,
-            'ticker': ticker,
-            'current_price': round(current_price, 2) if current_price else None,
-            'currency': currency,
-            'kpis': kpis_with_benchmarks,
-            'historical_prices': historical_prices,
-            'news': news,
-            'company_overview': company_overview
-        }
-    
 
 class RecommendationEngine:
     """Generate Buy/Hold/Sell recommendation based on weighted KPI scores"""
