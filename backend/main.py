@@ -951,15 +951,19 @@ class KPICalculator:
                         # Determine if this is good or bad
                         if lower_is_better:
                             is_better = kpi_data['value'] < market_value
-                            status = 'cheaper' if kpi_key in ['pe_ratio', 'pb_ratio'] else 'lower'
+                            # Fix the status wording based on is_better
+                            if kpi_key in ['pe_ratio', 'pb_ratio']:
+                                status = 'cheaper' if is_better else 'more expensive'
+                            else:
+                                status = 'lower' if is_better else 'higher'
                         else:
                             is_better = kpi_data['value'] > market_value
-                            status = 'higher'
+                            status = 'higher' if is_better else 'lower'
                         
                         benchmarks['market'] = {
                             'name': market_name,
                             'value': round(market_value, 2),
-                            'diff_pct': round(diff_pct, 1),
+                            'diff_pct': round(abs(diff_pct), 1),  # Always positive for display
                             'is_better': is_better,
                             'status': status
                         }
@@ -974,15 +978,19 @@ class KPICalculator:
                         # Determine if this is good or bad
                         if lower_is_better:
                             is_better = kpi_data['value'] < sector_value
-                            status = 'cheaper' if kpi_key in ['pe_ratio', 'pb_ratio'] else 'lower'
+                            # Fix the status wording based on is_better
+                            if kpi_key in ['pe_ratio', 'pb_ratio']:
+                                status = 'cheaper' if is_better else 'more expensive'
+                            else:
+                                status = 'lower' if is_better else 'higher'
                         else:
                             is_better = kpi_data['value'] > sector_value
-                            status = 'higher'
+                            status = 'higher' if is_better else 'lower'
                         
                         benchmarks['sector'] = {
                             'name': sector,
                             'value': round(sector_value, 2),
-                            'diff_pct': round(diff_pct, 1),
+                            'diff_pct': round(abs(diff_pct), 1),  # Always positive for display
                             'is_better': is_better,
                             'status': status
                         }

@@ -389,31 +389,31 @@ const ShareAnalyzer = () => {
       
       {/* Benchmarks */}
       {benchmarks && (
-        <div className="mt-3 space-y-1.5 text-xs border-t border-gray-700 pt-3">
-          {benchmarks.market && (
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">📊 {benchmarks.market.name}:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-300">{benchmarks.market.value}</span>
-                <span className={`font-medium ${benchmarks.market.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                  ({Math.abs(benchmarks.market.diff_pct)}% {benchmarks.market.status} {benchmarks.market.is_better ? '✓' : '✗'})
-                </span>
-              </div>
-            </div>
-          )}
-          {benchmarks.sector && (
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400">🏭 {benchmarks.sector.name}:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-300">{benchmarks.sector.value}</span>
-                <span className={`font-medium ${benchmarks.sector.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                  ({Math.abs(benchmarks.sector.diff_pct)}% {benchmarks.sector.status} {benchmarks.sector.is_better ? '✓' : '✗'})
-                </span>
-              </div>
-            </div>
-          )}
+    <div className="mt-3 space-y-1.5 text-xs border-t border-gray-700 pt-3">
+      {benchmarks.market && (
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400">📊 {benchmarks.market.name}:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-300">{benchmarks.market.value}</span>
+            <span className={`font-medium ${benchmarks.market.is_better ? 'text-green-400' : 'text-red-400'}`}>
+              ({benchmarks.market.diff_pct}% {benchmarks.market.status} {benchmarks.market.is_better ? '✓' : '✗'})
+            </span>
+          </div>
         </div>
       )}
+      {benchmarks.sector && (
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400">🏭 {benchmarks.sector.name}:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-300">{benchmarks.sector.value}</span>
+            <span className={`font-medium ${benchmarks.sector.is_better ? 'text-green-400' : 'text-red-400'}`}>
+              ({benchmarks.sector.diff_pct}% {benchmarks.sector.status} {benchmarks.sector.is_better ? '✓' : '✗'})
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
     </div>
   );
 };
