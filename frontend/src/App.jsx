@@ -1245,7 +1245,7 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pe_ratio.score}
                     tooltip={kpiTooltips['P/E Ratio']}
-                    benchmarks={analysis.kpis.valuation.pe_ratio.benchmarks}
+                    benchmarks={analysis.kpis.valuation.pe_ratio?.benchmarks}
                   />
                   <KPICard 
                     label="P/B Ratio" 
@@ -1253,7 +1253,7 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pb_ratio.score}
                     tooltip={kpiTooltips['P/B Ratio']}
-                    benchmarks={analysis.kpis.valuation.pb_ratio.benchmarks}
+                    benchmarks={analysis.kpis.valuation.pb_ratio?.benchmarks}
                   />
                 </div>
               </div>
@@ -1273,7 +1273,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.roe.score}
                     tooltip={kpiTooltips['ROE']}
-                    benchmarks={analysis.kpis.valuation.roe.benchmarks}
+                    benchmarks={analysis.kpis.valuation.roe?.benchmarks}
                   />
                   <KPICard 
                     label="Profit Margin" 
@@ -1281,7 +1281,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.profit_margin.score}
                     tooltip={kpiTooltips['Profit Margin']}
-                    benchmarks={analysis.kpis.valuation.profit_margin.benchmarks}
+                    benchmarks={analysis.kpis.valuation.profit_margin?.benchmarks}
                   />
                   <KPICard 
                     label="Operating Margin" 
@@ -1289,7 +1289,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.operating_margin.score}
                     tooltip={kpiTooltips['Operating Margin']}
-                    benchmarks={analysis.kpis.valuation.operating_margin.benchmarks}
+                    benchmarks={analysis.kpis.valuation.operating_margin?.benchmarks}
                   />
                 </div>
               </div>
@@ -1309,7 +1309,7 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.debt_to_equity.score}
                     tooltip={kpiTooltips['Debt-to-Equity']}
-                    benchmarks={analysis.kpis.valuation.debt_to_equity.benchmarks}
+                    benchmarks={analysis.kpis.valuation.debt_to_equity?.benchmarks}
                   />
                   <KPICard 
                     label="Current Ratio" 
@@ -1317,7 +1317,7 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.current_ratio.score}
                     tooltip={kpiTooltips['Current Ratio']}
-                    benchmarks={analysis.kpis.valuation.current_ratio.benchmarks}
+                    benchmarks={analysis.kpis.valuation.current_ratio?.benchmarks}
                   />
                 </div>
               </div>
@@ -1337,7 +1337,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.revenue_growth.score}
                     tooltip={kpiTooltips['Revenue Growth']}
-                    benchmarks={analysis.kpis.valuation.revenue_growth.benchmarks}
+                    benchmarks={analysis.kpis.valuation.revenue_growth?.benchmarks}
                   />
                   <KPICard 
                     label="EPS Growth" 
@@ -1345,7 +1345,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.eps_growth.score}
                     tooltip={kpiTooltips['EPS Growth']}
-                    benchmarks={analysis.kpis.valuation.eps_growth.benchmarks}
+                    benchmarks={analysis.kpis.valuation.eps_growth?.benchmarks}
                   />
                 </div>
               </div>
@@ -1365,7 +1365,7 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.technical.beta.score}
                     tooltip={kpiTooltips['Beta']}
-                    benchmarks={analysis.kpis.valuation.beta.benchmarks}
+                    benchmarks={analysis.kpis.valuation.beta?.benchmarks}
                   />
                   <KPICard 
                     label="52W Price Position" 
@@ -1373,7 +1373,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.price_position.score}
                     tooltip={kpiTooltips['52W Price Position']}
-                    benchmarks={analysis.kpis.valuation.price_position.benchmarks}
+                    benchmarks={analysis.kpis.valuation.price_position?.benchmarks}
                   />
                   <KPICard 
                     label="Dividend Yield" 
@@ -1381,7 +1381,7 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.dividend_yield.score}
                     tooltip={kpiTooltips['Dividend Yield']}
-                    benchmarks={analysis.kpis.valuation.dividend_yield.benchmarks}
+                    benchmarks={analysis.kpis.valuation.dividend_yield?.benchmarks}
                   />
                 </div>
               </div>
