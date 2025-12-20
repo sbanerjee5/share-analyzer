@@ -358,7 +358,7 @@ const ShareAnalyzer = () => {
     );
   };
 
-  const KPICard = ({ label, value, unit, score, tooltip, benchmarks }) => {
+  const KPICard = ({ label, value, unit, score, tooltip }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     
     return (
@@ -386,34 +386,6 @@ const ShareAnalyzer = () => {
         </div>
         <ScoreBar score={score} />
         <div className="text-xs text-gray-500 mt-1">Score: {score}/10</div>
-        
-        {/* Benchmarks */}
-        {benchmarks && (
-          <div className="mt-3 space-y-1.5 text-xs border-t border-gray-700 pt-3">
-            {benchmarks.market && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400">📊 {benchmarks.market.name}:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-300">{benchmarks.market.value}</span>
-                  <span className={`font-medium ${benchmarks.market.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                    ({Math.abs(benchmarks.market.diff_pct)}% {benchmarks.market.status} {benchmarks.market.is_better ? '✓' : '✗'})
-                  </span>
-                </div>
-              </div>
-            )}
-            {benchmarks.sector && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400">🏭 {benchmarks.sector.name}:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-300">{benchmarks.sector.value}</span>
-                  <span className={`font-medium ${benchmarks.sector.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                    ({Math.abs(benchmarks.sector.diff_pct)}% {benchmarks.sector.status} {benchmarks.sector.is_better ? '✓' : '✗'})
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     );
   };
@@ -1245,7 +1217,6 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pe_ratio.score}
                     tooltip={kpiTooltips['P/E Ratio']}
-                    benchmarks={analysis.kpis.valuation.pe_ratio.benchmarks}
                   />
                   <KPICard 
                     label="P/B Ratio" 
@@ -1253,7 +1224,6 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pb_ratio.score}
                     tooltip={kpiTooltips['P/B Ratio']}
-                    benchmarks={analysis.kpis.valuation.pb_ratio.benchmarks}
                   />
                 </div>
               </div>
@@ -1273,7 +1243,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.roe.score}
                     tooltip={kpiTooltips['ROE']}
-                    benchmarks={analysis.kpis.profitability.roe.benchmarks}
                   />
                   <KPICard 
                     label="Profit Margin" 
@@ -1281,7 +1250,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.profit_margin.score}
                     tooltip={kpiTooltips['Profit Margin']}
-                    benchmarks={analysis.kpis.profitability.profit_margin.benchmarks}
                   />
                   <KPICard 
                     label="Operating Margin" 
@@ -1289,7 +1257,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.operating_margin.score}
                     tooltip={kpiTooltips['Operating Margin']}
-                    benchmarks={analysis.kpis.profitability.operating_margin.benchmarks}
                   />
                 </div>
               </div>
@@ -1309,7 +1276,6 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.debt_to_equity.score}
                     tooltip={kpiTooltips['Debt-to-Equity']}
-                    benchmarks={analysis.kpis.health.debt_to_equity.benchmarks}
                   />
                   <KPICard 
                     label="Current Ratio" 
@@ -1317,7 +1283,6 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.current_ratio.score}
                     tooltip={kpiTooltips['Current Ratio']}
-                    benchmarks={analysis.kpis.health.current_ratio.benchmarks}
                   />
                 </div>
               </div>
@@ -1337,7 +1302,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.revenue_growth.score}
                     tooltip={kpiTooltips['Revenue Growth']}
-                    benchmarks={analysis.kpis.growth.revenue_growth.benchmarks}
                   />
                   <KPICard 
                     label="EPS Growth" 
@@ -1345,7 +1309,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.eps_growth.score}
                     tooltip={kpiTooltips['EPS Growth']}
-                    benchmarks={analysis.kpis.growth.eps_growth.benchmarks}
                   />
                 </div>
               </div>
@@ -1365,7 +1328,6 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.technical.beta.score}
                     tooltip={kpiTooltips['Beta']}
-                    benchmarks={analysis.kpis.technical.beta.benchmarks}
                   />
                   <KPICard 
                     label="52W Price Position" 
@@ -1373,7 +1335,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.price_position.score}
                     tooltip={kpiTooltips['52W Price Position']}
-                    benchmarks={analysis.kpis.technical.price_position.benchmarks}
                   />
                   <KPICard 
                     label="Dividend Yield" 
@@ -1381,7 +1342,6 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.dividend_yield.score}
                     tooltip={kpiTooltips['Dividend Yield']}
-                    benchmarks={analysis.kpis.technical.dividend_yield.benchmarks}
                   />
                 </div>
               </div>

@@ -9,6 +9,46 @@ from pydantic import BaseModel
 import yfinance as yf
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+import re
+import pandas as pd
+import json
+import os
+import resend
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+load_dotenv()
+
+def strip_html_tags(text):
+    """Remove HTML tags from text"""
+    if not text:
+        return text
+    
+    # Remove HTML tags using regex
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    
+    # Replace common HTML entities
+    clean_text = clean_text.replace('&nbsp;', ' ')
+    clean_text = clean_text.replace('&amp;', '&')
+    clean_text = clean_text.replace('&lt;', '<')
+    clean_text = clean_text.replace('&gt;', '>')
+    clean_text = clean_text.replace('&quot;', '"')
+    clean_text = clean_text.replace('&#39;', "'")
+    
+    # Remove extra whitespace
+    clean_text = ' '.join(clean_text.split())
+    
+    return clean_text.strip()
+
+# Email capture configuration
+EMAIL_FILE = "captured_emails.json"
+# Email configuration - load from environment variable
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+if RESEND_API_KEY:
+    resend.api_key = RESEND_API_KEY
+    print("✓ Resend API key loaded from environment")
+else:
+    print("⚠️ WARNING: RESEND_API_KEY not set - email sending disabled")
 
 app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 
@@ -88,11 +128,22 @@ class KPICalculator:
                             # Check if article has 'content' key and use that, otherwise use article directly
                             article_data = article.get('content', article)
                             
+                            # DEBUG: Print the article_data structure
+                            print(f"\n=== Article {idx} Debug ===")
+                            print(f"article_data keys: {article_data.keys() if isinstance(article_data, dict) else 'Not a dict'}")
+                            print(f"Has 'title': {article_data.get('title', 'NO TITLE KEY')}")
+                            print(f"Has 'provider': {article_data.get('provider', 'NO PROVIDER KEY')}")
+                            print(f"Has 'canonicalUrl': {article_data.get('canonicalUrl', 'NO URL KEY')}")
+                            
                             # Try different possible field names from the nested content
                             title = (article_data.get('title') or 
                                    article_data.get('headline') or 
                                    article_data.get('summary') or 
                                    'No title available')
+                            
+                            # Strip HTML tags from title
+                            if title and title != 'No title available':
+                                title = strip_html_tags(title)
                             
                             # Publisher can be nested in provider object
                             provider = article_data.get('provider', {})
@@ -138,6 +189,49 @@ class KPICalculator:
                             if pub_time > 10000000000:
                                 pub_time = pub_time // 1000
                             
+                            # Extract thumbnail image
+                            thumbnail_url = None
+                            thumbnail_data = article_data.get('thumbnail', {})
+                            if isinstance(thumbnail_data, dict):
+                                # Try to get the best resolution thumbnail
+                                thumbnail_url = thumbnail_data.get('originalUrl')
+                                if not thumbnail_url and 'resolutions' in thumbnail_data:
+                                    resolutions = thumbnail_data.get('resolutions', [])
+                                    if resolutions and len(resolutions) > 0:
+                                        # Get the largest resolution available
+                                        thumbnail_url = resolutions[-1].get('url') if isinstance(resolutions[-1], dict) else None
+                            
+                            # Extract article summary/description
+                            summary = (article_data.get('summary') or 
+                                     article_data.get('description') or 
+                                     article_data.get('snippet') or 
+                                     None)
+                            
+                            # Strip HTML tags from summary
+                            if summary:
+                                summary = strip_html_tags(summary)
+                            
+                            # Analyze sentiment based on title and summary
+                            sentiment_text = f"{title} {summary if summary else ''}"
+                            sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
+                            
+                            # Calculate read time based on summary length
+                            read_time = KPICalculator.calculate_read_time(summary if summary else title)
+                            
+                            # Classify article category
+                            category = KPICalculator.classify_category(sentiment_text)
+                            
+                            # DEBUG: Show what we extracted
+                            print(f"EXTRACTED -> Title: {title}")
+                            print(f"EXTRACTED -> Publisher: {publisher}")
+                            print(f"EXTRACTED -> Link: {link}")
+                            print(f"EXTRACTED -> Thumbnail: {thumbnail_url[:50] if thumbnail_url else 'None'}")
+                            print(f"EXTRACTED -> Summary: {summary[:80] if summary else 'None'}...")
+                            print(f"EXTRACTED -> Sentiment: {sentiment_result['sentiment']} (score: {sentiment_result['score']})")
+                            print(f"EXTRACTED -> Read Time: {read_time} min")
+                            print(f"EXTRACTED -> Category: {category}")
+                            print(f"=== End Article {idx} ===\n")
+                            
                             print(f"Article {idx}: title={title[:50] if len(title) > 50 else title}, publisher={publisher}, link={link[:50] if link and len(link) > 50 else link}")
                             
                             news.append({
@@ -145,7 +239,13 @@ class KPICalculator:
                                 'publisher': publisher,
                                 'link': link,
                                 'publish_time': pub_time,
-                                'type': article_data.get('type', 'article')
+                                'type': article_data.get('type', 'article'),
+                                'thumbnail': thumbnail_url,
+                                'summary': summary,
+                                'sentiment': sentiment_result['sentiment'],
+                                'sentiment_score': sentiment_result['score'],
+                                'read_time': read_time,
+                                'category': category
                             })
                         
                         print(f"Successfully parsed {len(news)} news articles")
@@ -199,6 +299,172 @@ class KPICalculator:
         return data.get(key, default)
     
     @staticmethod
+    def determine_exchange_and_index(info: dict, ticker: str):
+        """Determine exchange and stock index (UK or US) based on market cap and ticker"""
+        exchange = info.get('exchange', '')
+        market_cap = info.get('marketCap', 0)
+        
+        # Get full exchange name
+        exchange_map = {
+            'LSE': 'London Stock Exchange',
+            'LON': 'London Stock Exchange',
+            'NYSE': 'New York Stock Exchange',
+            'NMS': 'NASDAQ',
+            'NGM': 'NASDAQ',
+            'NYQ': 'New York Stock Exchange',
+        }
+        
+        exchange_full = exchange_map.get(exchange, exchange or 'Unknown')
+        
+        # Determine index based on market cap and ticker
+        index_name = None
+        
+        # UK indices (for .L tickers)
+        if ticker.endswith('.L'):
+            if market_cap > 7_000_000_000:  # > £7B
+                index_name = 'FTSE 100'
+            elif market_cap > 500_000_000:  # £500M - £7B
+                index_name = 'FTSE 250'
+            elif market_cap > 0:  # < £500M
+                index_name = 'FTSE Small Cap / AIM'
+        
+        # US indices (for non-.L tickers with US exchanges)
+        elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
+            # Convert market cap to billions for easier comparison
+            market_cap_b = market_cap / 1_000_000_000
+            
+            if market_cap_b > 15:  # > $15B
+                index_name = 'S&P 500'
+            elif market_cap_b > 2:  # $2B - $15B
+                index_name = 'S&P 400 (Mid Cap)'
+            elif market_cap_b > 0.3:  # $300M - $2B
+                index_name = 'S&P 600 (Small Cap)'
+            elif market_cap > 0:  # < $300M
+                index_name = 'Micro Cap'
+        
+        return {
+            'exchange': exchange,
+            'exchange_full': exchange_full,
+            'index': index_name
+        }
+    
+    @staticmethod
+    def analyze_sentiment(text: str) -> dict:
+        """Analyze sentiment of news text using keyword matching"""
+        if not text:
+            return {'sentiment': 'neutral', 'score': 0}
+        
+        text_lower = text.lower()
+        
+        # Positive keywords (financial/business context)
+        positive_keywords = [
+            'profit', 'growth', 'gain', 'rise', 'surge', 'beat', 'exceed', 'strong',
+            'up', 'upgrade', 'boost', 'record', 'high', 'improved', 'expansion',
+            'success', 'positive', 'outperform', 'rally', 'soar', 'jump', 'climb',
+            'recovery', 'breakthrough', 'win', 'award', 'innovation', 'bullish'
+        ]
+        
+        # Negative keywords (financial/business context)
+        negative_keywords = [
+            'loss', 'drop', 'fall', 'decline', 'plunge', 'miss', 'below', 'weak',
+            'down', 'downgrade', 'cut', 'low', 'concern', 'warning', 'risk',
+            'fail', 'negative', 'underperform', 'crash', 'tumble', 'slide', 'slump',
+            'crisis', 'trouble', 'investigation', 'fine', 'penalty', 'bearish'
+        ]
+        
+        # Count keyword matches
+        positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+        negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+        
+        # Calculate sentiment score (-1 to +1)
+        total_keywords = positive_count + negative_count
+        if total_keywords == 0:
+            return {'sentiment': 'neutral', 'score': 0}
+        
+        score = (positive_count - negative_count) / total_keywords
+        
+        # Determine sentiment category
+        if score > 0.2:
+            sentiment = 'positive'
+        elif score < -0.2:
+            sentiment = 'negative'
+        else:
+            sentiment = 'neutral'
+        
+        return {'sentiment': sentiment, 'score': round(score, 2)}
+    
+    @staticmethod
+    def calculate_read_time(text: str) -> int:
+        """Calculate estimated reading time in minutes based on text length"""
+        if not text:
+            return 3  # Default 3 minutes for articles without summary
+        
+        # Average reading speed: 200 words per minute
+        # Financial articles might be slower, but we'll use standard rate
+        words_per_minute = 200
+        
+        # Count words in text
+        word_count = len(text.split())
+        
+        # Calculate read time in minutes (minimum 1 minute)
+        read_time = max(1, round(word_count / words_per_minute))
+        
+        # Cap at reasonable maximum (15 minutes)
+        # Most news articles are shorter than this
+        read_time = min(15, read_time)
+        
+        return read_time
+    
+    @staticmethod
+    def classify_category(text: str) -> str:
+        """Classify news article into category based on keywords"""
+        if not text:
+            return 'general'
+        
+        text_lower = text.lower()
+        
+        # Category keywords (ordered by priority)
+        category_keywords = {
+            'earnings': [
+                'earnings', 'profit', 'revenue', 'quarterly', 'results', 'q1', 'q2', 'q3', 'q4',
+                'forecast', 'guidance', 'eps', 'beat', 'miss', 'expectation', 'fiscal',
+                'income', 'sales', 'performance', 'outlook'
+            ],
+            'ma': [  # M&A
+                'merger', 'acquisition', 'takeover', 'deal', 'acquire', 'merge', 'buyout',
+                'bid', 'offer', 'purchase', 'buy', 'sell', 'divestiture', 'spin-off',
+                'consolidation', 'combination'
+            ],
+            'regulation': [
+                'regulation', 'regulatory', 'compliance', 'investigation', 'probe', 'fine',
+                'penalty', 'lawsuit', 'legal', 'court', 'sec', 'fca', 'regulator',
+                'violation', 'enforcement', 'inquiry', 'charges', 'settlement'
+            ],
+            'markets': [
+                'shares', 'stock', 'trading', 'market', 'price', 'rally', 'surge', 'plunge',
+                'drop', 'rise', 'fall', 'gain', 'loss', 'volume', 'index', 'ftse',
+                'dow', 'nasdaq', 'valuation', 'analyst', 'rating', 'upgrade', 'downgrade'
+            ],
+            'leadership': [
+                'ceo', 'cfo', 'chairman', 'chief', 'executive', 'appoint', 'resign',
+                'departure', 'successor', 'management', 'board', 'director', 'hire',
+                'promote', 'retire', 'succession'
+            ]
+        }
+        
+        # Count keyword matches for each category
+        category_scores = {}
+        for category, keywords in category_keywords.items():
+            score = sum(1 for keyword in keywords if keyword in text_lower)
+            if score > 0:
+                category_scores[category] = score
+        
+        # Return category with highest score, or 'general' if no matches
+        if category_scores:
+            return max(category_scores, key=category_scores.get)
+        return 'general'
+    
+    @staticmethod
     def calculate_score(value: float, thresholds: list, reverse: bool = False) -> int:
         """
         Calculate score (1-10) based on thresholds
@@ -235,6 +501,12 @@ class KPICalculator:
         
         # 2. P/B Ratio (Price-to-Book)
         pb_ratio = self.safe_get(info, 'priceToBook')
+        
+        # Fix for UK stocks (.L suffix) - yfinance reports prices in pence (GBp)
+        # but book value in pounds, causing P/B to be 100x too high
+        if pb_ratio and ticker.endswith('.L'):
+            pb_ratio = pb_ratio / 100
+        
         pb_score = self.calculate_score(
             pb_ratio if pb_ratio else 999,
             [(1.0, 10), (2.0, 8), (3.0, 6), (5.0, 4), (999, 2)]
@@ -282,12 +554,25 @@ class KPICalculator:
         ) if profit_margin_pct else 5
         
         # 8. Dividend Yield
+        # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
-        dividend_yield_pct = dividend_yield * 100 if dividend_yield else None
+
+        # Smart conversion - handle both decimal and percentage formats
+        if dividend_yield:
+            # If value is already > 1, it's likely already a percentage
+            if dividend_yield > 1:
+                dividend_yield_pct = dividend_yield
+            else:
+                # If value is < 1, it's a decimal, convert to percentage
+                dividend_yield_pct = dividend_yield * 100
+        else:
+            dividend_yield_pct = None
+
         dy_score = self.calculate_score(
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
         ) if dividend_yield_pct is not None else 5
+        
         
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
@@ -389,18 +674,27 @@ class KPICalculator:
             }
         }
         
-        # Get 12-month historical price data
+        # Get 12-month historical price data WITH MOVING AVERAGES
         historical_prices = []
         try:
             hist_data = data.get('history')
             if hist_data is not None and not hist_data.empty and 'Close' in hist_data.columns:
                 hist_12m = hist_data.tail(252)
-                for date, row in hist_12m.iterrows():
+                
+                # Calculate moving averages
+                # 50-day MA
+                ma_50 = hist_12m['Close'].rolling(window=50, min_periods=1).mean()
+                # 200-day MA  
+                ma_200 = hist_12m['Close'].rolling(window=200, min_periods=1).mean()
+                
+                for i, (date, row) in enumerate(hist_12m.iterrows()):
                     historical_prices.append({
                         'date': date.strftime('%Y-%m-%d'),
-                        'price': round(float(row['Close']), 2)
+                        'price': round(float(row['Close']), 2),
+                        'ma_50': round(float(ma_50.iloc[i]), 2) if not pd.isna(ma_50.iloc[i]) else None,
+                        'ma_200': round(float(ma_200.iloc[i]), 2) if not pd.isna(ma_200.iloc[i]) else None
                     })
-                print(f"Fetched {len(historical_prices)} historical price points")
+                print(f"Fetched {len(historical_prices)} historical price points with moving averages")
             else:
                 print("No historical data available")
         except Exception as e:
@@ -410,6 +704,35 @@ class KPICalculator:
         # Get news from data
         news = data.get('news', [])
         
+        # Determine exchange and index
+        exchange_info = self.determine_exchange_and_index(info, ticker)
+        
+        # Extract company overview information
+        company_overview = {
+            'description': self.safe_get(info, 'longBusinessSummary'),
+            'sector': self.safe_get(info, 'sector'),
+            'industry': self.safe_get(info, 'industry'),
+            'employees': self.safe_get(info, 'fullTimeEmployees'),
+            'headquarters': f"{self.safe_get(info, 'city', '')}, {self.safe_get(info, 'country', '')}".strip(', '),
+            'website': self.safe_get(info, 'website'),
+            'exchange': exchange_info['exchange'],
+            'exchange_full': exchange_info['exchange_full'],
+            'index': exchange_info['index'],
+            'market_cap': self.safe_get(info, 'marketCap'),
+            'enterprise_value': self.safe_get(info, 'enterpriseValue'),
+            'previous_close': self.safe_get(info, 'previousClose'),
+            'day_range': {
+                'low': self.safe_get(info, 'dayLow'),
+                'high': self.safe_get(info, 'dayHigh')
+            },
+            'week_52_range': {
+                'low': self.safe_get(info, 'fiftyTwoWeekLow'),
+                'high': self.safe_get(info, 'fiftyTwoWeekHigh')
+            },
+            'volume': self.safe_get(info, 'volume'),
+            'avg_volume': self.safe_get(info, 'averageVolume')
+        }
+        
         return {
             'company_name': company_name,
             'ticker': ticker,
@@ -417,7 +740,8 @@ class KPICalculator:
             'currency': currency,
             'kpis': kpis,
             'historical_prices': historical_prices,
-            'news': news
+            'news': news,
+            'company_overview': company_overview
         }
 
 class RecommendationEngine:
@@ -547,7 +871,8 @@ def analyze_stock(request: AnalysisRequest):
             'kpis': analysis['kpis'],
             'recommendation': recommendation,
             'historical_prices': analysis.get('historical_prices', []),
-            'news': analysis.get('news', [])
+            'news': analysis.get('news', []),
+            'company_overview': analysis.get('company_overview', {})
         }
     
     except HTTPException as he:
@@ -570,6 +895,244 @@ def health_check():
         "cache_size": len(cache)
     }
 
+@app.get("/api/check-env")
+def check_environment():
+    """Check if environment variables are set (for debugging)"""
+    return {
+        'resend_api_key_set': bool(os.environ.get('RESEND_API_KEY')),
+        'resend_api_key_length': len(os.environ.get('RESEND_API_KEY', '')) if os.environ.get('RESEND_API_KEY') else 0,
+        # Never return the actual key!
+        'environment': os.environ.get('RENDER', 'local')
+    }
+
+@app.post("/api/clear-cache")
+def clear_cache():
+    """Clear the cache - useful for debugging"""
+    cache.clear()
+    return {
+        "success": True,
+        "message": "Cache cleared",
+        "timestamp": datetime.now().isoformat()
+    }
+def send_welcome_email(first_name: str, email: str):
+    """
+    Send welcome email to new user
+    """
+    try:
+        # HTML email template
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    max-width: 600px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }}
+                .header {{
+                    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                    border-radius: 10px 10px 0 0;
+                }}
+                .content {{
+                    background: #f9fafb;
+                    padding: 30px;
+                    border-radius: 0 0 10px 10px;
+                }}
+                .button {{
+                    display: inline-block;
+                    background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
+                    color: #ffffff !important;
+                    padding: 12px 30px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                    font-weight: bold;
+                    font-size: 16px;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }}
+                .footer {{
+                    text-align: center;
+                    color: #666;
+                    font-size: 12px;
+                    margin-top: 30px;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📈 Welcome to Stock Analyzer!</h1>
+            </div>
+            <div class="content">
+                <h2>Hi {first_name},</h2>
+                <p>Thank you for signing up! You now have <strong>unlimited access</strong> to:</p>
+                <ul>
+                    <li>✅ Analyze 200+ UK & US stocks (FTSE 100/250, S&P 500)</li>
+                    <li>✅ 12 comprehensive KPIs with intelligent scoring</li>
+                    <li>✅ Price charts with 50-day & 200-day moving averages</li>
+                    <li>✅ Latest news with AI sentiment analysis</li>
+                    <li>✅ Buy/Hold/Sell recommendations</li>
+                    <li>✅ PDF report generation</li>
+                </ul>
+                <p style="text-align: center;">
+                    <a href="https://magnificent-figolla-37a50b.netlify.app" class="button">Start Analyzing Stocks</a>
+                </p>
+                <p><strong>Pro Tips:</strong></p>
+                <ul>
+                    <li>📊 Check the Overall Score (0-100) for quick insights</li>
+                    <li>📰 Use news filters to focus on specific sentiment or categories</li>
+                    <li>💾 Download PDF reports for offline analysis</li>
+                    <li>📈 Watch for moving average crossovers for trading signals</li>
+                </ul>
+                <p>Have questions or feedback? Just reply to this email - we'd love to hear from you!</p>
+                <p>Happy analyzing!</p>
+                <p><strong>The Stock Analyzer Team</strong></p>
+            </div>
+            <div class="footer">
+                <p>You're receiving this email because you signed up for Stock Analyzer.</p>
+                <p>Stock Analyzer | <a href="https://magnificent-figolla-37a50b.netlify.app">magnificent-figolla-37a50b.netlify.app</a></p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send email via Resend
+        params = {
+            "from": "Stock Analyzer <onboarding@resend.dev>",  # Use resend.dev for testing
+            "to": [email],
+            "subject": f"Welcome to Stock Analyzer, {first_name}! 🎉",
+            "html": html_content
+        }
+        
+        response = resend.Emails.send(params)
+        print(f"✓ Welcome email sent to {email} (ID: {response['id']})")
+        return True
+        
+    except Exception as e:
+        print(f"✗ Failed to send email to {email}: {str(e)}")
+        # Don't raise exception - we don't want email failure to break signup
+        return False
+    
+@app.post("/api/capture-email")
+def capture_email(email_data: dict):
+    """
+    Capture user information for lead generation
+    
+    Args:
+        email_data: dict with 'firstName', 'lastName', 'email', 'source', 'timestamp'
+        
+    Returns:
+        Success response
+    """
+    try:
+        first_name = email_data.get('firstName', '').strip()
+        last_name = email_data.get('lastName', '').strip()
+        email = email_data.get('email', '').strip().lower()
+        source = email_data.get('source', 'unknown')
+        timestamp = email_data.get('timestamp', datetime.now().isoformat())
+        
+        # Validate required fields
+        if not first_name:
+            raise HTTPException(status_code=400, detail="First name is required")
+        
+        if len(first_name) < 2:
+            raise HTTPException(status_code=400, detail="First name must be at least 2 characters")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+        
+        # Validate email format
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
+        # Load existing emails
+        if os.path.exists(EMAIL_FILE):
+            with open(EMAIL_FILE, 'r') as f:
+                leads = json.load(f)
+        else:
+            leads = []
+        
+        # Check if email already exists
+        existing_lead = next((lead for lead in leads if lead['email'] == email), None)
+        
+        if existing_lead:
+            print(f"Email already exists: {email}")
+            return {
+                'success': True,
+                'message': 'Email already registered',
+                'new_signup': False
+            }
+        
+        # Add new lead
+        lead_entry = {
+            'firstName': first_name,
+            'lastName': last_name,
+            'email': email,
+            'source': source,
+            'timestamp': timestamp,
+            'captured_at': datetime.now().isoformat()
+        }
+        
+        leads.append(lead_entry)
+        
+        # Save to file
+        with open(EMAIL_FILE, 'w') as f:
+            json.dump(leads, f, indent=2)
+        
+        print(f"✓ Captured new lead: {first_name} {last_name} <{email}> (source: {source})")
+        print(f"  Total leads: {len(leads)}")
+        
+        # Send welcome email (disabled during testing - domain not verified)
+        # email_sent = send_welcome_email(first_name, email)
+        email_sent = False  # Temporarily disabled
+        print(f"ℹ️ Email sending disabled - domain verification required")
+
+        return {
+            'success': True,
+            'message': 'Information captured successfully',
+            'new_signup': True,
+            'total_leads': len(leads),
+            'email_sent': email_sent
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"✗ Error capturing lead: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to capture information: {str(e)}")
+
+
+@app.get("/api/leads")
+def get_leads():
+    """
+    Get all captured leads (admin only - add authentication later)
+    Returns leads with firstName, lastName, email
+    """
+    try:
+        if os.path.exists(EMAIL_FILE):
+            with open(EMAIL_FILE, 'r') as f:
+                leads = json.load(f)
+            return {
+                'success': True,
+                'total': len(leads),
+                'leads': leads
+            }
+        return {
+            'success': True,
+            'total': 0,
+            'leads': []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
