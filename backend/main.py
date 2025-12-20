@@ -734,9 +734,19 @@ class KPICalculator:
     
         # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
-        # yfinance always returns as decimal (0.0577 = 5.77%), multiply by 100
-        dividend_yield_pct = (dividend_yield * 100) if dividend_yield else None
-        
+
+        # yfinance is inconsistent - sometimes decimal (0.0577), sometimes percentage (5.77)
+        # Detect format and convert accordingly
+        if dividend_yield:
+            if dividend_yield < 1:
+                # Value is decimal (0.0577) - multiply by 100 to get percentage
+                dividend_yield_pct = dividend_yield * 100
+            else:
+                # Value is already percentage (5.77) - use as is
+                dividend_yield_pct = dividend_yield
+        else:
+            dividend_yield_pct = None
+
         dy_score = self.calculate_score(
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
