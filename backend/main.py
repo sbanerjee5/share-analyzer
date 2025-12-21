@@ -972,7 +972,7 @@ class KPICalculator:
                     
                     if market_value:
                         # Determine if higher is better or lower is better
-                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta']
+                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta', 'price_position']
                         
                         # Calculate percentage difference
                         diff_pct = ((kpi_data['value'] - market_value) / market_value) * 100
@@ -1002,7 +1002,7 @@ class KPICalculator:
                         diff_pct = ((kpi_data['value'] - sector_value) / sector_value) * 100
                         
                         # Determine if higher is better or lower is better
-                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta']
+                        lower_is_better = kpi_key in ['pe_ratio', 'pb_ratio', 'debt_to_equity', 'beta', 'price_position']
                         
                         # Determine if this is good or bad
                         if lower_is_better:
