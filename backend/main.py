@@ -748,25 +748,20 @@ class KPICalculator:
         # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
 
-        # Handle inconsistent Yahoo Finance formats
-        if dividend_yield:
-            # If value is very small (< 0.01), it's definitely decimal
-            if dividend_yield < 0.01:
+        # Yahoo Finance is inconsistent with dividend yield format
+        # Strategy: Most dividend yields are 0-15%, so:
+        # - If value < 0.1 (like 0.077): multiply by 100 (it's decimal)
+        # - If value < 15 (like 0.77, 7.7): use as-is (already percentage)
+        # - If value >= 15 (like 77): divide by 10 (something went wrong)
+        if dividend_yield is not None:
+            if dividend_yield < 0.1:
+                # Value like 0.077 means 7.7% in decimal format
                 dividend_yield_pct = dividend_yield * 100
-            # If value is between 0.01 and 0.2, assume it's decimal (0.077 = 7.7%)
-            elif dividend_yield < 0.2:
-                dividend_yield_pct = dividend_yield * 100
-            # If value is between 0.2 and 1, could be either:
-            # - Decimal like 0.77 (would become 77% - too high)
-            # - Already percentage like 0.77% (unlikely)
-            # Most dividend yields are 0-20%, so if it's < 1, multiply by 100
-            elif dividend_yield < 1:
-                dividend_yield_pct = dividend_yield * 100
-            # If value >= 1 and < 20, assume it's already percentage (7.7%)
-            elif dividend_yield < 20:
+            elif dividend_yield < 15:
+                # Value like 0.77 or 7.7 is already percentage
                 dividend_yield_pct = dividend_yield
-            # If value >= 20, it was probably decimal and got multiplied, divide by 10
             else:
+                # Value like 77 or 770 is wrong, divide by 10
                 dividend_yield_pct = dividend_yield / 10
         else:
             dividend_yield_pct = None
@@ -775,7 +770,7 @@ class KPICalculator:
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
         ) if dividend_yield_pct is not None else 5
-            
+
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
         earnings_growth_pct = earnings_growth * 100 if earnings_growth else None
