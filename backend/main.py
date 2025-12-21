@@ -86,6 +86,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 12.5,
         'eps_growth': 15.0,
         'beta': 1.15,
+        'price_position': 50.0,
         'dividend_yield': 1.2
     },
     'Financial Services': {
@@ -99,6 +100,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 6.5,
         'eps_growth': 8.0,
         'beta': 1.05,
+        'price_position': 50.0,
         'dividend_yield': 2.8
     },
     'Healthcare': {
@@ -112,6 +114,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 8.5,
         'eps_growth': 10.5,
         'beta': 0.95,
+        'price_position': 50.0,
         'dividend_yield': 1.8
     },
     'Consumer Cyclical': {
@@ -125,6 +128,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 9.0,
         'eps_growth': 11.0,
         'beta': 1.10,
+        'price_position': 50.0,
         'dividend_yield': 1.5
     },
     'Consumer Defensive': {
@@ -138,6 +142,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 4.5,
         'eps_growth': 6.0,
         'beta': 0.70,
+        'price_position': 50.0,
         'dividend_yield': 2.5
     },
     'Energy': {
@@ -151,6 +156,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 5.5,
         'eps_growth': 7.5,
         'beta': 1.20,
+        'price_position': 50.0,
         'dividend_yield': 3.5
     },
     'Industrials': {
@@ -164,6 +170,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 7.0,
         'eps_growth': 9.0,
         'beta': 1.05,
+        'price_position': 50.0,
         'dividend_yield': 2.0
     },
     'Basic Materials': {
@@ -177,6 +184,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 6.0,
         'eps_growth': 8.5,
         'beta': 1.15,
+        'price_position': 50.0,
         'dividend_yield': 2.8
     },
     'Communication Services': {
@@ -190,6 +198,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 8.0,
         'eps_growth': 10.0,
         'beta': 0.90,
+        'price_position': 50.0,
         'dividend_yield': 1.6
     },
     'Utilities': {
@@ -203,6 +212,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 3.5,
         'eps_growth': 4.5,
         'beta': 0.65,
+        'price_position': 50.0,
         'dividend_yield': 3.8
     },
     'Real Estate': {
@@ -216,6 +226,7 @@ SECTOR_BENCHMARKS = {
         'revenue_growth': 5.0,
         'eps_growth': 6.5,
         'beta': 0.85,
+        'price_position': 50.0,
         'dividend_yield': 3.2
     }
 }
@@ -233,6 +244,7 @@ MARKET_BENCHMARKS = {
         'revenue_growth': 7.5,
         'eps_growth': 9.5,
         'beta': 1.0,
+        'price_position': 50.0,
         'dividend_yield': 1.8
     },
     'UK': {  # FTSE 100 averages
@@ -246,6 +258,7 @@ MARKET_BENCHMARKS = {
         'revenue_growth': 4.5,
         'eps_growth': 6.0,
         'beta': 0.95,
+        'price_position': 50.0,
         'dividend_yield': 3.5
     }
 }
@@ -735,15 +748,26 @@ class KPICalculator:
         # 8. Dividend Yield
         dividend_yield = self.safe_get(info, 'dividendYield')
 
-        # yfinance is inconsistent - sometimes decimal (0.0577), sometimes percentage (5.77)
-        # Detect format and convert accordingly
+        # Handle inconsistent Yahoo Finance formats
         if dividend_yield:
-            if dividend_yield < 1:
-                # Value is decimal (0.0577) - multiply by 100 to get percentage
+            # If value is very small (< 0.01), it's definitely decimal
+            if dividend_yield < 0.01:
                 dividend_yield_pct = dividend_yield * 100
-            else:
-                # Value is already percentage (5.77) - use as is
+            # If value is between 0.01 and 0.2, assume it's decimal (0.077 = 7.7%)
+            elif dividend_yield < 0.2:
+                dividend_yield_pct = dividend_yield * 100
+            # If value is between 0.2 and 1, could be either:
+            # - Decimal like 0.77 (would become 77% - too high)
+            # - Already percentage like 0.77% (unlikely)
+            # Most dividend yields are 0-20%, so if it's < 1, multiply by 100
+            elif dividend_yield < 1:
+                dividend_yield_pct = dividend_yield * 100
+            # If value >= 1 and < 20, assume it's already percentage (7.7%)
+            elif dividend_yield < 20:
                 dividend_yield_pct = dividend_yield
+            # If value >= 20, it was probably decimal and got multiplied, divide by 10
+            else:
+                dividend_yield_pct = dividend_yield / 10
         else:
             dividend_yield_pct = None
 
@@ -751,7 +775,7 @@ class KPICalculator:
             dividend_yield_pct if dividend_yield_pct else 0,
             [(0, 3), (2, 6), (4, 9), (6, 10), (999, 8)]
         ) if dividend_yield_pct is not None else 5
-    
+            
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
         earnings_growth_pct = earnings_growth * 100 if earnings_growth else None
