@@ -678,6 +678,7 @@ class KPICalculator:
         """Calculate all 12 KPIs"""
         data = self.get_stock_data(ticker)
         info = data['info']
+        anomalies = []  # Store all detected anomalies
     
         # Extract basic company info
         company_name = self.safe_get(info, 'longName', ticker)
@@ -686,6 +687,32 @@ class KPICalculator:
     
         # 1. P/E Ratio (Price-to-Earnings)
         pe_ratio = self.safe_get(info, 'trailingPE')
+
+        # === ANOMALY DETECTION - START ===
+        if pe_ratio and pe_ratio > 50:
+            anomalies.append({
+                'metric': 'P/E Ratio',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'medium',
+                    'message': 'Very high P/E ratio may indicate growth expectations or overvaluation',
+                    'context': f'P/E of {round(pe_ratio, 2)} is more than 2x the typical range (15-25). This could mean the market expects strong future growth, or the stock is overvalued.',
+                    'investor_note': 'High P/E stocks can deliver great returns if growth materializes, but carry higher risk if expectations aren\'t met.'
+                }
+            })
+        elif pe_ratio and pe_ratio < 5:
+            anomalies.append({
+                'metric': 'P/E Ratio',
+                'anomaly': {
+                    'type': 'extreme_low',
+                    'severity': 'medium',
+                    'message': 'Very low P/E ratio may indicate value opportunity or fundamental problems',
+                    'context': f'P/E of {round(pe_ratio, 2)} is unusually low. This could be a value opportunity, or indicate declining earnings/negative sentiment.',
+                    'investor_note': 'Verify why P/E is so low - is it a bargain or a value trap?'
+                }
+            })
+# === ANOMALY DETECTION - END ===
+
         pe_score = self.calculate_score(
             pe_ratio if pe_ratio else 999,
             [(10, 10), (15, 8), (20, 6), (30, 4), (999, 2)]
@@ -698,7 +725,32 @@ class KPICalculator:
         # but book value in pounds, causing P/B to be 100x too high
         if pb_ratio and ticker.endswith('.L'):
             pb_ratio = pb_ratio / 100
-    
+
+        # === ANOMALY DETECTION - START ===
+        if pb_ratio and pb_ratio < 0.5:
+            anomalies.append({
+                'metric': 'P/B Ratio',
+                'anomaly': {
+                    'type': 'extreme_low',
+                    'severity': 'high',
+                    'message': 'Trading below half of book value - potential distressed situation',
+                    'context': f'P/B of {round(pb_ratio, 2)} is extremely low. This often indicates bankruptcy concerns, asset writedowns, or severe market pessimism.',
+                    'investor_note': 'Verify the company\'s financial health and why the market is pricing it so low. Could be a turnaround opportunity or legitimate distress.'
+                }
+            })
+        elif pb_ratio and pb_ratio > 10:
+            anomalies.append({
+                'metric': 'P/B Ratio',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'medium',
+                    'message': 'Trading at 10x+ book value - asset-light business or high growth expectations',
+                    'context': f'P/B of {round(pb_ratio, 2)} is very high. Normal for tech/software companies with few physical assets, but may indicate overvaluation for traditional businesses.',
+                    'investor_note': 'High P/B is acceptable for asset-light businesses (software, services) but scrutinize carefully for capital-intensive industries.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
+
         pb_score = self.calculate_score(
             pb_ratio if pb_ratio else 999,
             [(1.0, 10), (2.0, 8), (3.0, 6), (5.0, 4), (999, 2)]
@@ -706,7 +758,52 @@ class KPICalculator:
     
         # 3. ROE (Return on Equity)
         roe = self.safe_get(info, 'returnOnEquity')
-        roe_pct = roe * 100 if roe else None
+        
+        # === FORMAT HANDLING - START ===
+        # Yahoo Finance sometimes returns ROE as decimal (0.15) or percentage (15 or even higher like 58.43)
+        if roe is not None:
+            if abs(roe) < 1:
+                # It's a decimal (0.15 = 15%)
+                roe_pct = roe * 100
+            else:
+                # It's already a percentage (15 = 15% or 58.43 = 58.43%)
+                roe_pct = roe
+        else:
+            roe_pct = None
+        # === FORMAT HANDLING - END ===
+
+        # ====== ADD THIS DEBUG LINE ======
+        # print(f"[DEBUG] ROE - Raw: {roe}, Converted: {roe_pct}, Will check anomaly: {roe_pct and roe_pct > 100}")
+        # ==================================
+
+        # === ANOMALY DETECTION - START ===
+        if roe_pct and roe_pct > 100:
+            # This is the Rolls-Royce scenario!
+            severity = 'high' if roe_pct > 1000 else 'medium'
+            
+            anomalies.append({
+                'metric': 'ROE',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': severity,
+                    'message': 'Extremely high ROE indicates very low shareholder equity',
+                    'context': f'ROE of {round(roe_pct, 2)}% suggests the company has very low equity, often due to:\n\n• Recent losses or restructuring (e.g., post-COVID recovery)\n• Aggressive share buybacks reducing equity\n• Previous writedowns or asset sales\n\nWhile the company may be profitable now, the balance sheet is weak. This is a mathematical result, not operational excellence.',
+                    'investor_note': 'Suitable for turnaround/recovery plays, NOT conservative portfolios. Verify balance sheet strength and understand the company\'s history before investing. High risk, high potential reward.'
+                }
+            })
+        elif roe_pct and roe_pct < -20:
+            anomalies.append({
+                'metric': 'ROE',
+                'anomaly': {
+                    'type': 'extreme_low',
+                    'severity': 'high',
+                    'message': 'Negative ROE indicates company is losing money',
+                    'context': f'ROE of {round(roe_pct, 2)}% means shareholders are seeing negative returns. Company is destroying equity value.',
+                    'investor_note': 'Avoid unless you understand the turnaround story and have high risk tolerance.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
+
         roe_score = self.calculate_score(
             roe_pct if roe_pct else -999,
             [(0, 2), (10, 5), (15, 7), (20, 9), (999, 10)]
@@ -740,6 +837,31 @@ class KPICalculator:
         # 7. Profit Margin
         profit_margin = self.safe_get(info, 'profitMargins')
         profit_margin_pct = profit_margin * 100 if profit_margin else None
+        # === ANOMALY DETECTION - START ===
+        if profit_margin_pct and profit_margin_pct > 40:
+            anomalies.append({
+                'metric': 'Profit Margin',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'low',
+                    'message': 'Exceptionally high profit margins',
+                    'context': f'Profit margin of {round(profit_margin_pct, 2)}% is exceptional. Common in software, pharmaceuticals, or monopolistic businesses with strong pricing power and low variable costs.',
+                    'investor_note': 'High margins are great but verify sustainability - can competitors erode this advantage?'
+                }
+            })
+        elif profit_margin_pct and profit_margin_pct < 0:
+            anomalies.append({
+                'metric': 'Profit Margin',
+                'anomaly': {
+                    'type': 'negative',
+                    'severity': 'high',
+                    'message': 'Company is unprofitable',
+                    'context': f'Profit margin of {round(profit_margin_pct, 2)}% means expenses exceed revenue. Company is losing money on operations.',
+                    'investor_note': 'Unprofitable companies can be good investments if they\'re in growth phase with path to profitability. Verify the business model and cash runway.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
+
         pm_score = self.calculate_score(
             profit_margin_pct if profit_margin_pct else -999,
             [(0, 2), (5, 4), (10, 6), (15, 8), (999, 10)]
@@ -765,6 +887,19 @@ class KPICalculator:
                 dividend_yield_pct = dividend_yield / 10
         else:
             dividend_yield_pct = None
+        # === ANOMALY DETECTION - START ===
+        if dividend_yield_pct and dividend_yield_pct > 10:
+            anomalies.append({
+                'metric': 'Dividend Yield',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'high',
+                    'message': 'Extremely high dividend yield - potential dividend cut risk',
+                    'context': f'Dividend yield of {round(dividend_yield_pct, 2)}% is unusually high. This often indicates:\n\n• Stock price has fallen dramatically (yield rises as price falls)\n• Market expects dividend cut\n• Unsustainable payout ratio\n\nVerify the payout ratio and company\'s cash flow.',
+                    'investor_note': 'High dividend yields above 10% are often "yield traps" - the dividend gets cut and stock falls further. Proceed with extreme caution.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
 
         dy_score = self.calculate_score(
             dividend_yield_pct if dividend_yield_pct else 0,
@@ -774,6 +909,32 @@ class KPICalculator:
         # 9. EPS Growth (Earnings Per Share)
         earnings_growth = self.safe_get(info, 'earningsGrowth')
         earnings_growth_pct = earnings_growth * 100 if earnings_growth else None
+
+        # === ANOMALY DETECTION - START ===
+        if earnings_growth_pct and earnings_growth_pct > 200:
+            anomalies.append({
+                'metric': 'EPS Growth',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'medium',
+                    'message': 'Exceptional EPS growth - verify sustainability',
+                    'context': f'EPS growth of {round(earnings_growth_pct, 2)}% is exceptional. This often indicates:\n\n• Recovery from very low base (like Rolls-Royce post-COVID)\n• One-time events or accounting changes\n• Small company in hypergrowth phase\n\nSuch high growth is rarely sustainable long-term.',
+                    'investor_note': 'While impressive, growth above 200% is rarely sustainable. Verify the driver is operational improvement, not accounting or one-time gains. Future growth will likely normalize.'
+                }
+            })
+        elif earnings_growth_pct and earnings_growth_pct < -50:
+            anomalies.append({
+                'metric': 'EPS Growth',
+                'anomaly': {
+                    'type': 'extreme_low',
+                    'severity': 'high',
+                    'message': 'Severe earnings decline',
+                    'context': f'EPS growth of {round(earnings_growth_pct, 2)}% represents a severe earnings collapse. Investigate the cause - is this temporary (cyclical downturn) or structural (broken business model)?',
+                    'investor_note': 'Major earnings declines can be buying opportunities IF the business is intact and the cause is temporary. But if structural, avoid.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
+
         eg_score = self.calculate_score(
             earnings_growth_pct if earnings_growth_pct else -999,
             [(-10, 2), (0, 4), (10, 6), (20, 8), (999, 10)]
@@ -804,6 +965,32 @@ class KPICalculator:
         # 12. Operating Margin
         operating_margin = self.safe_get(info, 'operatingMargins')
         operating_margin_pct = operating_margin * 100 if operating_margin else None
+
+        # === ANOMALY DETECTION - START ===
+        if operating_margin_pct and operating_margin_pct > 40:
+            anomalies.append({
+                'metric': 'Operating Margin',
+                'anomaly': {
+                    'type': 'extreme_high',
+                    'severity': 'low',
+                    'message': 'Exceptionally high operating margins',
+                    'context': f'Operating margin of {round(operating_margin_pct, 2)}% is exceptional, indicating strong operational efficiency and pricing power.',
+                    'investor_note': 'High margins attract competition. Check for moats (patents, network effects, brand) that protect this advantage.'
+                }
+            })
+        elif operating_margin_pct and operating_margin_pct < -10:
+            anomalies.append({
+                'metric': 'Operating Margin',
+                'anomaly': {
+                    'type': 'extreme_low',
+                    'severity': 'high',
+                    'message': 'Severely negative operating margin',
+                    'context': f'Operating margin of {round(operating_margin_pct, 2)}% indicates core operations are deeply unprofitable.',
+                    'investor_note': 'Heavy losses at operating level are concerning unless this is a deliberate growth investment (like Amazon in early years).'
+                }
+            })
+# === ANOMALY DETECTION - END ===
+
         om_score = self.calculate_score(
             operating_margin_pct if operating_margin_pct else -999,
             [(0, 2), (5, 4), (10, 6), (15, 8), (999, 10)]
@@ -940,6 +1127,7 @@ class KPICalculator:
             'current_price': round(current_price, 2) if current_price else None,
             'currency': currency,
             'kpis': kpis_with_benchmarks,
+            'anomalies': anomalies,  # ← ADD THIS LINE
             'historical_prices': historical_prices,
             'news': news,
             'company_overview': company_overview
@@ -1155,6 +1343,7 @@ def analyze_stock(request: AnalysisRequest):
                 'currency': analysis['currency']
             },
             'kpis': analysis['kpis'],
+            'anomalies': analysis.get('anomalies', []),  # ← ADD THIS LINE
             'recommendation': recommendation,
             'historical_prices': analysis.get('historical_prices', []),
             'news': analysis.get('news', []),
