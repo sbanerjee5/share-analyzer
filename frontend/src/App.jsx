@@ -7,10 +7,106 @@ import Select from 'react-select';
 import { ukStocks } from './ukStocks';
 import { usStocks } from './usStocks';
 
+// ==========================================
+// NEW: ANOMALY WARNING BADGE COMPONENT
+// ==========================================
+const AnomalyBadge = ({ anomaly }) => {
+  if (!anomaly) return null;
+  
+  const severityColors = {
+    high: 'bg-red-900/30 border-red-500 text-red-300',
+    medium: 'bg-yellow-900/30 border-yellow-500 text-yellow-300',
+    low: 'bg-blue-900/30 border-blue-500 text-blue-300'
+  };
+  
+  const severityIcons = {
+    high: '⚠️',
+    medium: '⚡',
+    low: 'ℹ️'
+  };
+  
+  const colorClass = severityColors[anomaly.severity] || severityColors.medium;
+  const icon = severityIcons[anomaly.severity] || '⚡';
+  
+  return (
+    <div className={`mt-3 p-3 border rounded-lg ${colorClass}`}>
+      <div className="flex items-start gap-2">
+        <span className="text-lg flex-shrink-0">{icon}</span>
+        <div className="flex-1">
+          <div className="font-semibold text-sm mb-1">
+            {anomaly.message}
+          </div>
+          <div className="text-xs opacity-90 leading-relaxed whitespace-pre-line">
+            {anomaly.context}
+          </div>
+          {anomaly.investor_note && (
+            <div className="mt-2 text-xs opacity-80 italic border-t border-current pt-2">
+              💡 {anomaly.investor_note}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==========================================
+// NEW: ANOMALY SUMMARY PANEL
+// ==========================================
+const AnomalySummaryPanel = ({ anomalies }) => {
+  if (!anomalies || anomalies.length === 0) return null;
+  
+  const highSeverity = anomalies.filter(a => a.anomaly.severity === 'high').length;
+  const mediumSeverity = anomalies.filter(a => a.anomaly.severity === 'medium').length;
+  const lowSeverity = anomalies.filter(a => a.anomaly.severity === 'low').length;
+  
+  return (
+    <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/50 rounded-lg p-4 mb-6">
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">🔍</span>
+        <div className="flex-1">
+          <h3 className="text-lg font-bold text-yellow-300 mb-2">
+            Unusual Metrics Detected
+          </h3>
+          <p className="text-sm text-gray-300 mb-3">
+            This stock has {anomalies.length} metric{anomalies.length !== 1 ? 's' : ''} with unusual values that require additional context:
+          </p>
+          
+          <div className="flex gap-4 text-sm mb-3 flex-wrap">
+            {highSeverity > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-red-400">⚠️</span>
+                <span className="text-red-300">{highSeverity} High Priority</span>
+              </div>
+            )}
+            {mediumSeverity > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-yellow-400">⚡</span>
+                <span className="text-yellow-300">{mediumSeverity} Medium Priority</span>
+              </div>
+            )}
+            {lowSeverity > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-blue-400">ℹ️</span>
+                <span className="text-blue-300">{lowSeverity} Informational</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="text-xs text-gray-400">
+            📋 Detailed explanations appear next to each affected metric below
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ShareAnalyzer = () => {
   const [ticker, setTicker] = useState('');
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [anomalies, setAnomalies] = useState([]); // NEW: Added anomalies state
   const [error, setError] = useState(null);
 
   // Email gate state
@@ -27,6 +123,12 @@ const ShareAnalyzer = () => {
   // News filter state
   const [sentimentFilter, setSentimentFilter] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState(null);
+
+  // NEW: Helper function to find anomaly for a specific metric
+  const getAnomalyForMetric = (metricName) => {
+    const found = anomalies.find(a => a.metric === metricName);
+    return found ? found.anomaly : null;
+  };
 
   // Filtered news based on selected filters
   const filteredNews = analysis?.news ? analysis.news.filter(article => {
@@ -73,19 +175,21 @@ const ShareAnalyzer = () => {
     
     setLoading(true);
     setError(null);
+    setAnomalies([]); // NEW: Reset anomalies
     
-  try{
-    const response = await fetch('https://stock-analyzer-backend-83mw.onrender.com/api/analyze', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ ticker: ticker.toUpperCase() })
-});
+    try {
+      const response = await fetch('https://stock-analyzer-backend-83mw.onrender.com/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker: ticker.toUpperCase() })
+      });
       
       const data = await response.json();
       
       if (data.success) {
         setAnalysis(data);
-        setAnalysisCount(prev => prev + 1); // Increment analysis counter
+        setAnomalies(data.anomalies || []); // NEW: Set anomalies from API response
+        setAnalysisCount(prev => prev + 1);
       } else {
         setError('Failed to analyze stock');
       }
@@ -155,20 +259,17 @@ const ShareAnalyzer = () => {
         localStorage.setItem('userData', JSON.stringify(userData));
         
         setShowEmailModal(false);
-        setShowSuccessMessage(true);  // ← ADD THIS
+        setShowSuccessMessage(true);
 
         // Hide success message after 10 seconds
-        setTimeout(() => setShowSuccessMessage(false), 10000);  // ← ADD THIS
+        setTimeout(() => setShowSuccessMessage(false), 10000);
         
         // Clear form
         setFirstName('');
         setLastName('');
         setEmailInput('');
         setValidationError('');
-        
-        // DON'T call analyzeStock() here - removed to prevent modal reopening
       } else {
-
         setValidationError(data.message || 'Failed to save information. Please try again.');
       }
     } catch (err) {
@@ -177,6 +278,7 @@ const ShareAnalyzer = () => {
       setEmailSubmitting(false);
     }
   };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       analyzeStock();
@@ -358,7 +460,8 @@ const ShareAnalyzer = () => {
     );
   };
 
-  const KPICard = ({ label, value, unit, score, tooltip, benchmarks }) => {
+  // UPDATED: KPICard now accepts anomaly prop
+  const KPICard = ({ label, value, unit, score, tooltip, benchmarks, anomaly }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     
     return (
@@ -396,7 +499,7 @@ const ShareAnalyzer = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-gray-300">{benchmarks.market.value}</span>
                   <span className={`font-medium ${benchmarks.market.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                    ({Math.abs(benchmarks.market.diff_pct)}% {benchmarks.market.status} {benchmarks.market.is_better ? '✓' : '✗'})
+                    ({benchmarks.market.diff_pct}% {benchmarks.market.status} {benchmarks.market.is_better ? '✓' : '✗'})
                   </span>
                 </div>
               </div>
@@ -407,13 +510,16 @@ const ShareAnalyzer = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-gray-300">{benchmarks.sector.value}</span>
                   <span className={`font-medium ${benchmarks.sector.is_better ? 'text-green-400' : 'text-red-400'}`}>
-                    ({Math.abs(benchmarks.sector.diff_pct)}% {benchmarks.sector.status} {benchmarks.sector.is_better ? '✓' : '✗'})
+                    ({benchmarks.sector.diff_pct}% {benchmarks.sector.status} {benchmarks.sector.is_better ? '✓' : '✗'})
                   </span>
                 </div>
               </div>
             )}
           </div>
         )}
+
+        {/* NEW: ANOMALY WARNING */}
+        <AnomalyBadge anomaly={anomaly} />
       </div>
     );
   };
@@ -688,6 +794,9 @@ const ShareAnalyzer = () => {
         {/* Analysis Results */}
         {analysis && (
           <div className="space-y-8 animate-fadeIn">
+            {/* NEW: ANOMALY SUMMARY PANEL */}
+            <AnomalySummaryPanel anomalies={anomalies} />
+
             {/* Company Header */}
             <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
               <div className="flex justify-between items-start">
@@ -1139,7 +1248,7 @@ const ShareAnalyzer = () => {
                       const categoryInfo = article.category ? getCategoryInfo(article.category) : null;
 
                       return (
-                        <a
+                        
                           key={idx}
                           href={article.link || '#'}
                           target="_blank"
@@ -1245,7 +1354,8 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pe_ratio.score}
                     tooltip={kpiTooltips['P/E Ratio']}
-                    benchmarks={analysis.kpis.valuation.pe_ratio.benchmarks}
+                    benchmarks={analysis.kpis.valuation.pe_ratio?.benchmarks}
+                    anomaly={getAnomalyForMetric('P/E Ratio')}
                   />
                   <KPICard 
                     label="P/B Ratio" 
@@ -1253,7 +1363,8 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.valuation.pb_ratio.score}
                     tooltip={kpiTooltips['P/B Ratio']}
-                    benchmarks={analysis.kpis.valuation.pb_ratio.benchmarks}
+                    benchmarks={analysis.kpis.valuation.pb_ratio?.benchmarks}
+                    anomaly={getAnomalyForMetric('P/B Ratio')}
                   />
                 </div>
               </div>
@@ -1273,7 +1384,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.roe.score}
                     tooltip={kpiTooltips['ROE']}
-                    benchmarks={analysis.kpis.profitability.roe.benchmarks}
+                    benchmarks={analysis.kpis.profitability.roe?.benchmarks}
+                    anomaly={getAnomalyForMetric('ROE')}
                   />
                   <KPICard 
                     label="Profit Margin" 
@@ -1281,7 +1393,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.profit_margin.score}
                     tooltip={kpiTooltips['Profit Margin']}
-                    benchmarks={analysis.kpis.profitability.profit_margin.benchmarks}
+                    benchmarks={analysis.kpis.profitability.profit_margin?.benchmarks}
+                    anomaly={getAnomalyForMetric('Profit Margin')}
                   />
                   <KPICard 
                     label="Operating Margin" 
@@ -1289,7 +1402,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.profitability.operating_margin.score}
                     tooltip={kpiTooltips['Operating Margin']}
-                    benchmarks={analysis.kpis.profitability.operating_margin.benchmarks}
+                    benchmarks={analysis.kpis.profitability.operating_margin?.benchmarks}
+                    anomaly={getAnomalyForMetric('Operating Margin')}
                   />
                 </div>
               </div>
@@ -1309,7 +1423,8 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.debt_to_equity.score}
                     tooltip={kpiTooltips['Debt-to-Equity']}
-                    benchmarks={analysis.kpis.health.debt_to_equity.benchmarks}
+                    benchmarks={analysis.kpis.health.debt_to_equity?.benchmarks}
+                    anomaly={getAnomalyForMetric('Debt-to-Equity')}
                   />
                   <KPICard 
                     label="Current Ratio" 
@@ -1317,7 +1432,8 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.health.current_ratio.score}
                     tooltip={kpiTooltips['Current Ratio']}
-                    benchmarks={analysis.kpis.health.current_ratio.benchmarks}
+                    benchmarks={analysis.kpis.health.current_ratio?.benchmarks}
+                    anomaly={getAnomalyForMetric('Current Ratio')}
                   />
                 </div>
               </div>
@@ -1337,7 +1453,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.revenue_growth.score}
                     tooltip={kpiTooltips['Revenue Growth']}
-                    benchmarks={analysis.kpis.growth.revenue_growth.benchmarks}
+                    benchmarks={analysis.kpis.growth.revenue_growth?.benchmarks}
+                    anomaly={getAnomalyForMetric('Revenue Growth')}
                   />
                   <KPICard 
                     label="EPS Growth" 
@@ -1345,7 +1462,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.growth.eps_growth.score}
                     tooltip={kpiTooltips['EPS Growth']}
-                    benchmarks={analysis.kpis.growth.eps_growth.benchmarks}
+                    benchmarks={analysis.kpis.growth.eps_growth?.benchmarks}
+                    anomaly={getAnomalyForMetric('EPS Growth')}
                   />
                 </div>
               </div>
@@ -1365,7 +1483,8 @@ const ShareAnalyzer = () => {
                     unit="" 
                     score={analysis.kpis.technical.beta.score}
                     tooltip={kpiTooltips['Beta']}
-                    benchmarks={analysis.kpis.technical.beta.benchmarks}
+                    benchmarks={analysis.kpis.technical.beta?.benchmarks}
+                    anomaly={getAnomalyForMetric('Beta')}
                   />
                   <KPICard 
                     label="52W Price Position" 
@@ -1373,7 +1492,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.price_position.score}
                     tooltip={kpiTooltips['52W Price Position']}
-                    benchmarks={analysis.kpis.technical.price_position.benchmarks}
+                    benchmarks={analysis.kpis.technical.price_position?.benchmarks}
+                    anomaly={getAnomalyForMetric('52W Price Position')}
                   />
                   <KPICard 
                     label="Dividend Yield" 
@@ -1381,7 +1501,8 @@ const ShareAnalyzer = () => {
                     unit="%" 
                     score={analysis.kpis.technical.dividend_yield.score}
                     tooltip={kpiTooltips['Dividend Yield']}
-                    benchmarks={analysis.kpis.technical.dividend_yield.benchmarks}
+                    benchmarks={analysis.kpis.technical.dividend_yield?.benchmarks}
+                    anomaly={getAnomalyForMetric('Dividend Yield')}
                   />
                 </div>
               </div>
@@ -1407,6 +1528,7 @@ const ShareAnalyzer = () => {
             </div>
           </div>
         )}
+
         {/* Email Gate Modal */}
         {showEmailModal && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
