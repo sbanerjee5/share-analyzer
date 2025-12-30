@@ -486,8 +486,19 @@ const ShareAnalyzer = () => {
           )}
         </div>
         <div className="text-2xl font-bold text-white mb-2">
-          {value !== null ? `${value}${unit}` : 'N/A'}
-        </div>
+  {value !== null ? (
+    `${value}${unit}`
+  ) : (
+    <div className="flex flex-col items-center">
+      <span className="text-gray-400">N/A</span>
+      {(label === 'Debt-to-Equity' || label === 'Current Ratio') && (
+        <span className="text-xs text-gray-500 mt-1 text-center">
+          Not applicable for financial institutions
+        </span>
+      )}
+    </div>
+  )}
+</div>
         <ScoreBar score={score} />
         <div className="text-xs text-gray-500 mt-1">Score: {score}/10</div>
         
