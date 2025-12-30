@@ -52,6 +52,7 @@ export const ukStocks = [
   { symbol: "PSON.L", name: "Pearson PLC" },
   { symbol: "RR.L", name: "Rolls-Royce Holdings PLC" },
   { symbol: "BA.L", name: "BAE Systems PLC" },
+  { symbol: "JD.L", name: "JD Sports Fashion plc" },
   
   // ============================================
   // FTSE 250 - 25 Mid-Cap Stocks
