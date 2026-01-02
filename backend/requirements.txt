@@ -5,5 +5,5 @@ pandas
 numpy
 pydantic
 python-dateutil
-resend
+mailerlite-api-python
 python-dotenv
