@@ -1407,20 +1407,25 @@ def send_welcome_email(first_name: str, last_name: str, email: str):
             print("⚠️ MailerLite not configured")
             return False
         
-        # Prepare subscriber data
+        # Prepare subscriber data (without groups in the initial call)
         subscriber_data = {
             "email": email,
             "fields": {
                 "name": first_name,
                 "last_name": last_name
-            },
-            "groups": [MAILERLITE_GROUP_ID]
+            }
         }
         
-        # Add subscriber to MailerLite
-        response = mailerlite.subscribers.create(subscriber_data)
+        # Step 1: Create/update subscriber
+        subscriber_response = mailerlite.subscribers.create(subscriber_data)
+        print(f"✓ Subscriber created/updated in MailerLite: {email}")
         
-        print(f"✓ Subscriber added to MailerLite: {email}")
+        # Step 2: Add subscriber to group
+        # The group ID needs to be passed as a string
+        group_id_str = str(MAILERLITE_GROUP_ID)
+        mailerlite.groups.assign(group_id_str, email)
+        
+        print(f"✓ Subscriber added to group: {group_id_str}")
         print(f"  Welcome email will be sent automatically by automation")
         return True
         
