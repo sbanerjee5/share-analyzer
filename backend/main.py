@@ -14,6 +14,7 @@ import re
 import pandas as pd
 import json
 import os
+import requests
 from mailerlite import MailerLiteApi
 from dotenv import load_dotenv
 
@@ -1400,34 +1401,46 @@ def clear_cache():
     }
 def send_welcome_email(first_name: str, last_name: str, email: str):
     """
-    Add subscriber to MailerLite group (triggers welcome email automation)
+    Add subscriber to MailerLite group using REST API (triggers welcome email automation)
     """
     try:
-        if not mailerlite or not MAILERLITE_GROUP_ID:
+        if not MAILERLITE_API_KEY or not MAILERLITE_GROUP_ID:
             print("⚠️ MailerLite not configured")
             return False
         
-        # Prepare subscriber data (without groups in the initial call)
-        subscriber_data = {
+        # MailerLite API endpoint
+        url = "https://connect.mailerlite.com/api/subscribers"
+        
+        # Headers for authentication
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {MAILERLITE_API_KEY}"
+        }
+        
+        # Subscriber data with group assignment
+        data = {
             "email": email,
             "fields": {
                 "name": first_name,
                 "last_name": last_name
-            }
+            },
+            "groups": [MAILERLITE_GROUP_ID]  # Assign to group directly
         }
         
-        # Step 1: Create/update subscriber
-        subscriber_response = mailerlite.subscribers.create(subscriber_data)
-        print(f"✓ Subscriber created/updated in MailerLite: {email}")
+        # Make API request
+        response = requests.post(url, headers=headers, json=data)
         
-        # Step 2: Add subscriber to group
-        # The group ID needs to be passed as a string
-        group_id_str = str(MAILERLITE_GROUP_ID)
-        mailerlite.groups.assign(group_id_str, email)
-        
-        print(f"✓ Subscriber added to group: {group_id_str}")
-        print(f"  Welcome email will be sent automatically by automation")
-        return True
+        # Check response
+        if response.status_code in [200, 201]:
+            print(f"✓ Subscriber added to MailerLite: {email}")
+            print(f"✓ Added to group: {MAILERLITE_GROUP_ID}")
+            print(f"  Welcome email will be sent automatically by automation")
+            return True
+        else:
+            print(f"✗ Failed to add subscriber to MailerLite: {email}")
+            print(f"  Status code: {response.status_code}")
+            print(f"  Response: {response.text}")
+            return False
         
     except Exception as e:
         print(f"✗ Failed to add subscriber to MailerLite: {email}")
