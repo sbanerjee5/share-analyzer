@@ -1268,7 +1268,7 @@ class RecommendationEngine:
             recommendation = "BUY"
             color = "green"
             message = "Strong fundamentals indicate good investment value"
-        elif total_score_100 >= 40:
+        elif total_score_100 >= 50:
             recommendation = "HOLD"
             color = "yellow"
             message = "Moderate fundamentals, monitor for changes"
