@@ -87,7 +87,7 @@ export const ukStocks = [
   // ============================================
   // AIM & Small-Cap - 25 Growth Stocks
   // ============================================
-  { symbol: "ASOS.L", name: "ASOS PLC" },
+  { symbol: "ASC.L", name: "ASOS PLC" },
   { symbol: "DRX.L", name: "Drax Group PLC" },
   { symbol: "MOON.L", name: "Moonpig Group PLC" },
   { symbol: "FDM.L", name: "FDM Group Holdings PLC" },
