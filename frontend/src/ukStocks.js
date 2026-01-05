@@ -1,6 +1,6 @@
 export const ukStocks = [
   // ============================================
-  // FTSE 100 - 50 Large-Cap Stocks
+  // FTSE 100 - 51 Large-Cap Stocks
   // ============================================
   { symbol: "BARC.L", name: "Barclays PLC" },
   { symbol: "BP.L", name: "BP PLC" },
@@ -55,7 +55,7 @@ export const ukStocks = [
   { symbol: "JD.L", name: "JD Sports Fashion plc" },
   
   // ============================================
-  // FTSE 250 - 25 Mid-Cap Stocks
+  // FTSE 250 - 27 Mid-Cap Stocks
   // ============================================
   { symbol: "FRAS.L", name: "Frasers Group PLC" },
   { symbol: "MGNS.L", name: "Morgan Sindall Group PLC" },
@@ -83,6 +83,7 @@ export const ukStocks = [
   { symbol: "RSW.L", name: "Renishaw PLC" },
   { symbol: "SN.L", name: "Smith & Nephew PLC" },
   { symbol: "TEP.L", name: "Telecom Plus" },
+  { symbol: "MEGP.L", name: "ME Group International PLC" },
   
   // ============================================
   // AIM & Small-Cap - 25 Growth Stocks
