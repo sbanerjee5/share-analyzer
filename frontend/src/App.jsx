@@ -1551,7 +1551,7 @@ const ShareAnalyzer = () => {
                 </h3>
                 <p className="text-gray-300">
                   Get forever free access to analyze unlimited UK and US stocks, news, charts, and KPIs. 
-                  Plus, receive weekly market insights in your inbox!
+                  Plus, receive a 7-day stock analysis course via email, followed by weekly market insights!
                 </p>
               </div>
               
