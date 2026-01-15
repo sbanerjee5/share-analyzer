@@ -462,8 +462,30 @@ const ShareAnalyzer = () => {
     );
   };
 
-  const KPICard = ({ label, value, unit, score, tooltip, benchmarks, anomaly }) => {
+  const KPICard = ({ label, value, unit, score, tooltip, benchmarks, anomaly, sector }) => {
     const [showTooltip, setShowTooltip] = useState(false);
+    
+    // Helper function to get intelligent N/A message
+    const getNAMessage = (label, sector) => {
+      // For Debt-to-Equity and Current Ratio
+      if (label === 'Debt-to-Equity' || label === 'Current Ratio') {
+        if (sector === 'Financial Services') {
+          return 'Not applicable for financial institutions';
+        }
+        return 'Data not available';
+      }
+      
+      // For ROE - provide context-aware explanation
+      if (label === 'ROE') {
+        if (sector === 'Financial Services') {
+          return 'Complex capital structure - metric may not be meaningful';
+        }
+        return 'Data not available - may indicate unusual balance sheet structure or recent restructuring';
+      }
+      
+      // Default for other metrics
+      return 'Data not available';
+    };
     
     return (
       <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
@@ -485,20 +507,21 @@ const ShareAnalyzer = () => {
             </div>
           )}
         </div>
+        
+        {/* UPDATED VALUE DISPLAY WITH INTELLIGENT N/A MESSAGES */}
         <div className="text-2xl font-bold text-white mb-2">
-  {value !== null ? (
-    `${value}${unit}`
-  ) : (
-    <div className="flex flex-col items-center">
-      <span className="text-gray-400">N/A</span>
-      {(label === 'Debt-to-Equity' || label === 'Current Ratio') && (
-        <span className="text-xs text-gray-500 mt-1 text-center">
-          Not applicable for financial institutions
-        </span>
-      )}
-    </div>
-  )}
-</div>
+          {value !== null ? (
+            `${value}${unit}`
+          ) : (
+            <div className="flex flex-col items-center">
+              <span className="text-gray-400">N/A</span>
+              <span className="text-xs text-gray-500 mt-1 text-center">
+                {getNAMessage(label, sector)}
+              </span>
+            </div>
+          )}
+        </div>
+        
         <ScoreBar score={score} />
         <div className="text-xs text-gray-500 mt-1">Score: {score}/10</div>
         
