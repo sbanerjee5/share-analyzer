@@ -1351,11 +1351,14 @@ const ShareAnalyzer = () => {
             <div className="space-y-6">
               {/* Valuation */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-blue-400">Valuation Metrics</h3>
-                  <div className="text-lg">
-                    Score: <span className="font-bold">{analysis.recommendation.category_scores.valuation}/10</span>
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-2xl font-bold text-blue-400">Valuation Metrics</h3>
+                    <div className="text-lg">
+                      Score: <span className="font-bold">{analysis.recommendation.category_scores.valuation}/10</span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-400 italic">Check if you're overpaying for the stock with these 2 simple ratios</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <KPICard 
@@ -1381,11 +1384,14 @@ const ShareAnalyzer = () => {
 
               {/* Profitability */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-green-400">Profitability Metrics</h3>
-                  <div className="text-lg">
-                    Score: <span className="font-bold">{analysis.recommendation.category_scores.profitability}/10</span>
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-2xl font-bold text-green-400">Profitability Metrics</h3>
+                    <div className="text-lg">
+                      Score: <span className="font-bold">{analysis.recommendation.category_scores.profitability}/10</span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-400 italic">Discover how efficiently the company turns revenue into profit</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <KPICard 
@@ -1420,11 +1426,14 @@ const ShareAnalyzer = () => {
 
               {/* Financial Health */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-purple-400">Financial Health</h3>
-                  <div className="text-lg">
-                    Score: <span className="font-bold">{analysis.recommendation.category_scores.health}/10</span>
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-2xl font-bold text-purple-400">Financial Health</h3>
+                    <div className="text-lg">
+                      Score: <span className="font-bold">{analysis.recommendation.category_scores.health}/10</span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-400 italic">Assess the company's ability to meet obligations and weather downturns</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <KPICard 
@@ -1450,11 +1459,14 @@ const ShareAnalyzer = () => {
 
               {/* Growth */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-yellow-400">Growth Metrics</h3>
-                  <div className="text-lg">
-                    Score: <span className="font-bold">{analysis.recommendation.category_scores.growth}/10</span>
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-2xl font-bold text-yellow-400">Growth Metrics</h3>
+                    <div className="text-lg">
+                      Score: <span className="font-bold">{analysis.recommendation.category_scores.growth}/10</span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-400 italic">Evaluate the company's expansion trajectory and momentum</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <KPICard 
@@ -1480,11 +1492,14 @@ const ShareAnalyzer = () => {
 
               {/* Technical */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-orange-400">Technical & Market</h3>
-                  <div className="text-lg">
-                    Score: <span className="font-bold">{analysis.recommendation.category_scores.technical}/10</span>
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-2xl font-bold text-orange-400">Technical & Market</h3>
+                    <div className="text-lg">
+                      Score: <span className="font-bold">{analysis.recommendation.category_scores.technical}/10</span>
+                    </div>
                   </div>
+                  <p className="text-sm text-gray-400 italic">Understand market sentiment, volatility, and income potential</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <KPICard 
