@@ -53,6 +53,7 @@ export const ukStocks = [
   { symbol: "RR.L", name: "Rolls-Royce Holdings PLC" },
   { symbol: "BA.L", name: "BAE Systems PLC" },
   { symbol: "JD.L", name: "JD Sports Fashion plc" },
+  { symbol: "CTEC.L", name: "ConvaTec Group PLC" },
   
   // ============================================
   // FTSE 250 - 27 Mid-Cap Stocks
