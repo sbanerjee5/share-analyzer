@@ -519,12 +519,35 @@ class KPICalculator:
         
         # UK indices (for .L tickers)
         if ticker.endswith('.L'):
-            if market_cap > 7_000_000_000:  # > £7B
+            ticker_upper = ticker.upper()
+        
+            # Known FTSE 100 stocks (for edge cases with market cap < £7B)
+            known_ftse_100 = {
+                'CTEC.L',   # Convatec - £4.8B market cap
+                'RR.L',     # Rolls-Royce - can be below £7B
+                'BA.L',     # BAE Systems
+                'SMDS.L',   # Smith & Nephew
+                'PSON.L',   # Pearson
+                'WEIR.L',   # Weir Group
+                'CRDA.L',   # Croda International
+                'IMI.L',    # IMI plc
+                'SMIN.L',   # Smiths Group
+                'DCC.L',    # DCC plc
+                'HWDN.L',   # Howden Joinery
+                # Add more as you encounter misclassifications
+            }
+            
+            # Check if it's a known FTSE 100 stock first
+            if ticker_upper in known_ftse_100:
+                index_name = 'FTSE 100'
+            # Then use market cap thresholds
+            elif market_cap > 7_000_000_000:  # > £7B
                 index_name = 'FTSE 100'
             elif market_cap > 500_000_000:  # £500M - £7B
                 index_name = 'FTSE 250'
             elif market_cap > 0:  # < £500M
                 index_name = 'FTSE Small Cap / AIM'
+
         
         # US indices (for non-.L tickers with US exchanges)
         elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
