@@ -1392,6 +1392,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['P/E Ratio']}
                     benchmarks={analysis.kpis.valuation.pe_ratio.benchmarks}
                     anomaly={getAnomalyForMetric('P/E Ratio')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="P/B Ratio" 
@@ -1401,6 +1402,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['P/B Ratio']}
                     benchmarks={analysis.kpis.valuation.pb_ratio.benchmarks}
                     anomaly={getAnomalyForMetric('P/B Ratio')}
+                    sector={analysis.company_overview?.sector}
                   />
                 </div>
               </div>
@@ -1425,6 +1427,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['ROE']}
                     benchmarks={analysis.kpis.profitability.roe.benchmarks}
                     anomaly={getAnomalyForMetric('ROE')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="Profit Margin" 
@@ -1434,6 +1437,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Profit Margin']}
                     benchmarks={analysis.kpis.profitability.profit_margin.benchmarks}
                     anomaly={getAnomalyForMetric('Profit Margin')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="Operating Margin" 
@@ -1443,6 +1447,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Operating Margin']}
                     benchmarks={analysis.kpis.profitability.operating_margin.benchmarks}
                     anomaly={getAnomalyForMetric('Operating Margin')}
+                    sector={analysis.company_overview?.sector}
                   />
                 </div>
               </div>
@@ -1467,6 +1472,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Debt-to-Equity']}
                     benchmarks={analysis.kpis.health.debt_to_equity.benchmarks}
                     anomaly={getAnomalyForMetric('Debt-to-Equity')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="Current Ratio" 
@@ -1476,6 +1482,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Current Ratio']}
                     benchmarks={analysis.kpis.health.current_ratio.benchmarks}
                     anomaly={getAnomalyForMetric('Current Ratio')}
+                    sector={analysis.company_overview?.sector}
                   />
                 </div>
               </div>
@@ -1500,6 +1507,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Revenue Growth']}
                     benchmarks={analysis.kpis.growth.revenue_growth.benchmarks}
                     anomaly={getAnomalyForMetric('Revenue Growth')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="EPS Growth" 
@@ -1509,6 +1517,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['EPS Growth']}
                     benchmarks={analysis.kpis.growth.eps_growth.benchmarks}
                     anomaly={getAnomalyForMetric('EPS Growth')}
+                    sector={analysis.company_overview?.sector}
                   />
                 </div>
               </div>
@@ -1533,6 +1542,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Beta']}
                     benchmarks={analysis.kpis.technical.beta.benchmarks}
                     anomaly={getAnomalyForMetric('Beta')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="52W Price Position" 
@@ -1542,6 +1552,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['52W Price Position']}
                     benchmarks={analysis.kpis.technical.price_position.benchmarks}
                     anomaly={getAnomalyForMetric('52W Price Position')}
+                    sector={analysis.company_overview?.sector}
                   />
                   <KPICard 
                     label="Dividend Yield" 
@@ -1551,6 +1562,7 @@ const ShareAnalyzer = () => {
                     tooltip={kpiTooltips['Dividend Yield']}
                     benchmarks={analysis.kpis.technical.dividend_yield.benchmarks}
                     anomaly={getAnomalyForMetric('Dividend Yield')}
+                    sector={analysis.company_overview?.sector}
                   />
                 </div>
               </div>
