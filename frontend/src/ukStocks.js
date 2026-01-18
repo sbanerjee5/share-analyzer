@@ -114,4 +114,5 @@ export const ukStocks = [
   { symbol: "POLY.L", name: "Polymetal International PLC" },
   { symbol: "CCH.L", name: "Coca-Cola HBC AG" },
   { symbol: "SXS.L", name: "Spectris PLC" },
+  { symbol: "SRB.L", name: "Serabi Gold PLC" },
 ];
