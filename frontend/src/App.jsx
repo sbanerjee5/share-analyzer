@@ -322,7 +322,7 @@ const ShareAnalyzer = () => {
       
       doc.setFontSize(18);
       doc.setTextColor(255, 255, 255);
-      doc.text(`RECOMMENDATION: ${analysis.recommendation.recommendation}`, pageWidth / 2, 75, { align: 'center' });
+      doc.text(`ANALYSIS RATING: ${analysis.recommendation.recommendation}`, pageWidth / 2, 75, { align: 'center' });
       doc.text(`Overall Score: ${analysis.recommendation.score}/100`, pageWidth / 2, 85, { align: 'center' });
       
       let yPosition = 100;
@@ -418,7 +418,7 @@ const ShareAnalyzer = () => {
       
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
-      const disclaimer = 'Disclaimer: This analysis is for informational purposes only and does not constitute financial advice. Always conduct your own research and consult with a qualified financial advisor before making investment decisions.';
+      const disclaimer = 'Disclaimer: This analysis is for informational and educational purposes only and does not constitute financial advice, investment recommendation, or solicitation to buy, sell, or hold any security. The ratings (BUY/HOLD/SELL) are algorithmic assessments only. Always conduct your own research and consult with a qualified financial advisor before making investment decisions. Past performance does not guarantee future results.';
       const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 30);
       doc.text(splitDisclaimer, 15, yPosition);
       
@@ -830,6 +830,26 @@ const ShareAnalyzer = () => {
           <div className="space-y-8 animate-fadeIn">
             <AnomalySummaryPanel anomalies={anomalies} />
 
+            {/* ENHANCED DISCLAIMER - Add this section */}
+            <div className="bg-red-900/20 border-2 border-red-500/50 rounded-lg p-5">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-red-300 font-bold text-lg mb-2">
+                    ⚠️ Not Financial Advice
+                  </div>
+                  <p className="text-sm text-red-200 leading-relaxed">
+                    This analysis is for <strong>informational and educational purposes only</strong>. 
+                    It is <strong>NOT investment advice, a recommendation, or a solicitation</strong> to 
+                    buy, sell, or hold any security. The ratings shown (BUY/HOLD/SELL) are 
+                    algorithmic assessments based on historical data and should not be interpreted 
+                    as professional financial advice. Always conduct your own research and consult 
+                    with a qualified, licensed financial advisor before making any investment decisions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Company Header */}
             <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
               <div className="flex justify-between items-start">
@@ -851,7 +871,7 @@ const ShareAnalyzer = () => {
                 <div className="flex items-center gap-6">
                   {getRecommendationIcon(analysis.recommendation.recommendation)}
                   <div>
-                    <div className="text-sm opacity-90 mb-1">RECOMMENDATION</div>
+                    <div className="text-sm opacity-90 mb-1">ANALYSIS RATING</div>
                     <div className="text-4xl font-bold">{analysis.recommendation.recommendation}</div>
                   </div>
                 </div>
@@ -1579,11 +1599,11 @@ const ShareAnalyzer = () => {
               </button>
             </div>
 
-            {/* Disclaimer */}
+            {/* Bottom Disclaimer - Keep but simplified */}
             <div className="mt-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
               <p className="text-sm text-yellow-200">
                 <strong>Disclaimer:</strong> This analysis is for informational purposes only and does not constitute financial advice. 
-                Always conduct your own research and consult with a qualified financial advisor before making investment decisions.
+                Past performance does not guarantee future results. Always conduct your own research and consult with a qualified financial advisor before making investment decisions.
               </p>
             </div>
           </div>
