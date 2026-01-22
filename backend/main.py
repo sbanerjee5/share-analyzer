@@ -844,8 +844,7 @@ class KPICalculator:
             debt_to_equity = debt_to_equity / 100
         de_score = self.calculate_score(
             debt_to_equity if debt_to_equity else 999,
-            [(0.3, 10), (0.6, 8), (1.0, 6), (2.0, 4), (999, 2)],
-            reverse=True
+            [(0.3, 10), (0.6, 8), (1.0, 6), (2.0, 4), (999, 2)]  
         ) if debt_to_equity else 5
     
         # 5. Current Ratio
