@@ -1275,7 +1275,7 @@ class RecommendationEngine:
         return sum(scores) / len(scores) if scores else 5.0
     
     def generate_recommendation(self, kpis: dict) -> dict:
-        """Generate overall Buy/Hold/Sell recommendation"""
+        """Generate overall Buy/Hold/Sell analysis rating"""
         category_scores = {}
         
         # Calculate score for each category
