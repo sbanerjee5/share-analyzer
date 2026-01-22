@@ -982,13 +982,19 @@ class KPICalculator:
         # 11. 52-Week Price Position
         fifty_two_week_high = self.safe_get(info, 'fiftyTwoWeekHigh')
         fifty_two_week_low = self.safe_get(info, 'fiftyTwoWeekLow')
-        
+
         if current_price and fifty_two_week_high and fifty_two_week_low:
             price_position = ((current_price - fifty_two_week_low) / 
                             (fifty_two_week_high - fifty_two_week_low)) * 100
+            
+            # Score based on distance from 50% (middle is best, extremes are risky)
+            # This avoids bias toward value investing (low prices) or momentum (high prices)
+            distance_from_middle = abs(price_position - 50)
+            
+            # Thresholds: ≤10% from middle = 10, ≤20% = 8, ≤30% = 6, ≤40% = 4, >40% = 2
             pp_score = self.calculate_score(
-                price_position,
-                [(20, 10), (40, 8), (60, 6), (80, 4), (100, 2)]
+                distance_from_middle,
+                [(10, 10), (20, 8), (30, 6), (40, 4), (50, 2)]
             )
         else:
             price_position = None
