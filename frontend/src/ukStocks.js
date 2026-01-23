@@ -1,6 +1,6 @@
 export const ukStocks = [
   // ============================================
-  // FTSE 100 - 51 Large-Cap Stocks
+  // FTSE 100 - 52 Large-Cap Stocks
   // ============================================
   { symbol: "BARC.L", name: "Barclays PLC" },
   { symbol: "BP.L", name: "BP PLC" },
@@ -28,7 +28,7 @@ export const ukStocks = [
   { symbol: "STAN.L", name: "Standard Chartered PLC" },
   { symbol: "BT-A.L", name: "BT Group PLC" },
   { symbol: "LAND.L", name: "Land Securities Group PLC" },
-  { symbol: "SSE.L", name: "SSE PLC" },
+  { symbol: "EZJ.L", name: "easyJet PLC" },
   { symbol: "GLEN.L", name: "Glencore PLC" },
   { symbol: "NWG.L", name: "NatWest Group PLC" },
   { symbol: "MKS.L", name: "Marks & Spencer Group PLC" },
@@ -56,7 +56,7 @@ export const ukStocks = [
   { symbol: "CTEC.L", name: "ConvaTec Group PLC" },
   
   // ============================================
-  // FTSE 250 - 27 Mid-Cap Stocks
+  // FTSE 250 - 28 Mid-Cap Stocks
   // ============================================
   { symbol: "FRAS.L", name: "Frasers Group PLC" },
   { symbol: "MGNS.L", name: "Morgan Sindall Group PLC" },
@@ -85,9 +85,11 @@ export const ukStocks = [
   { symbol: "SN.L", name: "Smith & Nephew PLC" },
   { symbol: "TEP.L", name: "Telecom Plus" },
   { symbol: "MEGP.L", name: "ME Group International PLC" },
+  { symbol: "CMCX.L", name: "CMC Markets PLC" },
+  
   
   // ============================================
-  // AIM & Small-Cap - 25 Growth Stocks
+  // AIM & Small-Cap - 27 Growth Stocks
   // ============================================
   { symbol: "ASC.L", name: "ASOS PLC" },
   { symbol: "DRX.L", name: "Drax Group PLC" },
@@ -115,4 +117,5 @@ export const ukStocks = [
   { symbol: "CCH.L", name: "Coca-Cola HBC AG" },
   { symbol: "SXS.L", name: "Spectris PLC" },
   { symbol: "SRB.L", name: "Serabi Gold PLC" },
+  { symbol: "CHRT.L", name: "Cohort PLC" },
 ];
