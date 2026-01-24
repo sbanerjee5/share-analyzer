@@ -663,7 +663,7 @@ const ShareAnalyzer = () => {
             Comprehensive analysis of UK & US stocks • AI-powered insights • Market data
           </p>
           <p className="text-sm text-gray-400 mt-2">
-            Analyze 100+ UK stocks (FTSE 100/250) and 100 US stocks (S&P 500 & major indices)
+            Analyze 100+ UK stocks (FTSE 100/250/AIM) and 100 US stocks (S&P 500 & major indices)
           </p>
         </div>
 
@@ -843,7 +843,7 @@ const ShareAnalyzer = () => {
                     It is <strong>NOT investment advice, a recommendation, or a solicitation</strong> to 
                     buy, sell, or hold any security. The ratings shown (BUY/HOLD/SELL) are 
                     algorithmic assessments based on historical data and should not be interpreted 
-                    as professional financial advice. Always conduct your own research and consult 
+                    as professional financial advice. Always conduct your own research and/or consult 
                     with a qualified, licensed financial advisor before making any investment decisions.
                   </p>
                 </div>
