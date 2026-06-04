@@ -752,8 +752,8 @@ class KPICalculator:
     
         # Fix for UK stocks (.L suffix) - yfinance reports prices in pence (GBp)
         # but book value in pounds, causing P/B to be 100x too high
-        if pb_ratio and ticker.endswith('.L'):
-            pb_ratio = pb_ratio / 100
+        #if pb_ratio and ticker.endswith('.L'):
+        #    pb_ratio = pb_ratio / 100
 
         # === ANOMALY DETECTION - START ===
         if pb_ratio and pb_ratio < 0.5:
