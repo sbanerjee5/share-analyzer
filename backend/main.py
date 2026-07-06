@@ -281,10 +281,13 @@ class KPICalculator:
                 print(f"Using cached data for {ticker}")
                 return cached_data
         
-        # Fetch fresh data
+        # Fetch fresh data with Chrome impersonation
         try:
+            from curl_cffi import requests as curl_requests
+            session = curl_requests.Session(impersonate="chrome")
+            
             print(f"Fetching fresh data for {ticker}")
-            stock = yf.Ticker(ticker)
+            stock = yf.Ticker(ticker, session=session)
             info = stock.info
             
             # Check if we got valid data
