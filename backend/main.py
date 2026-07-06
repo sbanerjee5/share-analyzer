@@ -15,7 +15,6 @@ import pandas as pd
 import json
 import os
 import requests
-from mailerlite import MailerLiteApi
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (for local development)
@@ -46,16 +45,14 @@ def strip_html_tags(text):
 EMAIL_FILE = "captured_emails.json"
 
 # Email configuration - load from environment variable
-MAILERLITE_API_KEY = os.environ.get('MAILERLITE_API_KEY')
-MAILERLITE_GROUP_ID = os.environ.get('MAILERLITE_GROUP_ID')
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
+BREVO_LIST_ID = os.environ.get('BREVO_LIST_ID')
 
-if MAILERLITE_API_KEY and MAILERLITE_GROUP_ID:
-    mailerlite = MailerLiteApi(MAILERLITE_API_KEY)
-    print("✓ MailerLite API key loaded from environment")
-    print(f"✓ MailerLite Group ID: {MAILERLITE_GROUP_ID}")
+if BREVO_API_KEY and BREVO_LIST_ID:
+    print("✓ Brevo API key loaded from environment")
+    print(f"✓ Brevo List ID: {BREVO_LIST_ID}")
 else:
-    mailerlite = None
-    print("⚠️ WARNING: MailerLite not configured - email sending disabled")
+    print("⚠️ WARNING: Brevo not configured - email sending disabled")
 
 app = FastAPI(title="UK Share Analyzer API", version="1.0.0")
 
@@ -1429,49 +1426,45 @@ def clear_cache():
     }
 def send_welcome_email(first_name: str, last_name: str, email: str):
     """
-    Add subscriber to MailerLite group using REST API (triggers welcome email automation)
+    Add subscriber to Brevo list (triggers welcome email automation)
     """
     try:
-        if not MAILERLITE_API_KEY or not MAILERLITE_GROUP_ID:
-            print("⚠️ MailerLite not configured")
+        if not BREVO_API_KEY or not BREVO_LIST_ID:
+            print("⚠️ Brevo not configured")
             return False
-        
-        # MailerLite API endpoint
-        url = "https://connect.mailerlite.com/api/subscribers"
-        
-        # Headers for authentication
+
+        url = "https://api.brevo.com/v3/contacts"
+
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {MAILERLITE_API_KEY}"
+            "api-key": BREVO_API_KEY
         }
-        
-        # Subscriber data with group assignment
+
         data = {
             "email": email,
-            "fields": {
-                "name": first_name,
-                "last_name": last_name
+            "attributes": {
+                "FIRSTNAME": first_name,
+                "LASTNAME": last_name
             },
-            "groups": [MAILERLITE_GROUP_ID]  # Assign to group directly
+            "listIds": [int(BREVO_LIST_ID)],
+            "updateEnabled": True  # Updates contact if already exists
         }
-        
-        # Make API request
+
         response = requests.post(url, headers=headers, json=data)
-        
-        # Check response
+
         if response.status_code in [200, 201]:
-            print(f"✓ Subscriber added to MailerLite: {email}")
-            print(f"✓ Added to group: {MAILERLITE_GROUP_ID}")
-            print(f"  Welcome email will be sent automatically by automation")
+            print(f"✓ Subscriber added to Brevo: {email}")
+            print(f"✓ Added to list ID: {BREVO_LIST_ID}")
+            print(f"  Welcome email automation will trigger automatically")
             return True
         else:
-            print(f"✗ Failed to add subscriber to MailerLite: {email}")
+            print(f"✗ Failed to add subscriber to Brevo: {email}")
             print(f"  Status code: {response.status_code}")
             print(f"  Response: {response.text}")
             return False
-        
+
     except Exception as e:
-        print(f"✗ Failed to add subscriber to MailerLite: {email}")
+        print(f"✗ Failed to add subscriber to Brevo: {email}")
         print(f"  Error: {str(e)}")
         import traceback
         print(traceback.format_exc())
