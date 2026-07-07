@@ -294,7 +294,7 @@ class KPICalculator:
             # Convert UK ticker format: SHEL.L -> SHEL.LSE for FMP
             fmp_ticker = ticker
             if ticker.endswith('.L'):
-                fmp_ticker = ticker[:-2] + '.LSE'
+                fmp_ticker = ticker
     
             headers = {"Content-Type": "application/json"}
             params = {"symbol": fmp_ticker, "apikey": FMP_API_KEY}
@@ -546,128 +546,128 @@ class KPICalculator:
                 detail=f"Unable to fetch data for {ticker}. Error: {str(e)}"
             )
         
-        @staticmethod
-        def safe_get(data: dict, key: str, default=None):
-            """Safely get value from dictionary"""
-            return data.get(key, default)
+    @staticmethod
+    def safe_get(data: dict, key: str, default=None):
+        """Safely get value from dictionary"""
+        return data.get(key, default)
         
-        @staticmethod
-        def determine_exchange_and_index(info: dict, ticker: str):
-            """Determine exchange and stock index (UK or US) based on market cap and ticker"""
-            exchange = info.get('exchange', '')
-            market_cap = info.get('marketCap', 0)
-            
-            # Get full exchange name
-            exchange_map = {
-                'LSE': 'London Stock Exchange',
-                'LON': 'London Stock Exchange',
-                'NYSE': 'New York Stock Exchange',
-                'NMS': 'NASDAQ',
-                'NGM': 'NASDAQ',
-                'NYQ': 'New York Stock Exchange',
+    @staticmethod
+    def determine_exchange_and_index(info: dict, ticker: str):
+        """Determine exchange and stock index (UK or US) based on market cap and ticker"""
+        exchange = info.get('exchange', '')
+        market_cap = info.get('marketCap', 0)
+        
+        # Get full exchange name
+        exchange_map = {
+            'LSE': 'London Stock Exchange',
+            'LON': 'London Stock Exchange',
+            'NYSE': 'New York Stock Exchange',
+            'NMS': 'NASDAQ',
+            'NGM': 'NASDAQ',
+            'NYQ': 'New York Stock Exchange',
+        }
+        
+        exchange_full = exchange_map.get(exchange, exchange or 'Unknown')
+        
+        # Determine index based on market cap and ticker
+        index_name = None
+        
+        # UK indices (for .L tickers)
+        if ticker.endswith('.L'):
+            ticker_upper = ticker.upper()
+        
+            # Known FTSE 100 stocks (for edge cases with market cap < £7B)
+            known_ftse_100 = {
+                'CTEC.L',   # Convatec - £4.8B market cap
+                'RR.L',     # Rolls-Royce - can be below £7B
+                'BA.L',     # BAE Systems
+                'SMDS.L',   # Smith & Nephew
+                'PSON.L',   # Pearson
+                'WEIR.L',   # Weir Group
+                'CRDA.L',   # Croda International
+                'IMI.L',    # IMI plc
+                'SMIN.L',   # Smiths Group
+                'DCC.L',    # DCC plc
+                'HWDN.L',   # Howden Joinery
+                # Add more as you encounter misclassifications
             }
             
-            exchange_full = exchange_map.get(exchange, exchange or 'Unknown')
-            
-            # Determine index based on market cap and ticker
-            index_name = None
-            
-            # UK indices (for .L tickers)
-            if ticker.endswith('.L'):
-                ticker_upper = ticker.upper()
-            
-                # Known FTSE 100 stocks (for edge cases with market cap < £7B)
-                known_ftse_100 = {
-                    'CTEC.L',   # Convatec - £4.8B market cap
-                    'RR.L',     # Rolls-Royce - can be below £7B
-                    'BA.L',     # BAE Systems
-                    'SMDS.L',   # Smith & Nephew
-                    'PSON.L',   # Pearson
-                    'WEIR.L',   # Weir Group
-                    'CRDA.L',   # Croda International
-                    'IMI.L',    # IMI plc
-                    'SMIN.L',   # Smiths Group
-                    'DCC.L',    # DCC plc
-                    'HWDN.L',   # Howden Joinery
-                    # Add more as you encounter misclassifications
-                }
-                
-                # Check if it's a known FTSE 100 stock first
-                if ticker_upper in known_ftse_100:
-                    index_name = 'FTSE 100'
-                # Then use market cap thresholds
-                elif market_cap > 7_000_000_000:  # > £7B
-                    index_name = 'FTSE 100'
-                elif market_cap > 500_000_000:  # £500M - £7B
-                    index_name = 'FTSE 250'
-                elif market_cap > 0:  # < £500M
-                    index_name = 'FTSE Small Cap / AIM'
+            # Check if it's a known FTSE 100 stock first
+            if ticker_upper in known_ftse_100:
+                index_name = 'FTSE 100'
+            # Then use market cap thresholds
+            elif market_cap > 7_000_000_000:  # > £7B
+                index_name = 'FTSE 100'
+            elif market_cap > 500_000_000:  # £500M - £7B
+                index_name = 'FTSE 250'
+            elif market_cap > 0:  # < £500M
+                index_name = 'FTSE Small Cap / AIM'
 
-            
-            # US indices (for non-.L tickers with US exchanges)
-            elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
-                # Convert market cap to billions for easier comparison
-                market_cap_b = market_cap / 1_000_000_000
-                
-                if market_cap_b > 15:  # > $15B
-                    index_name = 'S&P 500'
-                elif market_cap_b > 2:  # $2B - $15B
-                    index_name = 'S&P 400 (Mid Cap)'
-                elif market_cap_b > 0.3:  # $300M - $2B
-                    index_name = 'S&P 600 (Small Cap)'
-                elif market_cap > 0:  # < $300M
-                    index_name = 'Micro Cap'
-            
-            return {
-                'exchange': exchange,
-                'exchange_full': exchange_full,
-                'index': index_name
-            }
         
-        @staticmethod
-        def analyze_sentiment(text: str) -> dict:
-            """Analyze sentiment of news text using keyword matching"""
-            if not text:
-                return {'sentiment': 'neutral', 'score': 0}
+        # US indices (for non-.L tickers with US exchanges)
+        elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
+            # Convert market cap to billions for easier comparison
+            market_cap_b = market_cap / 1_000_000_000
             
-            text_lower = text.lower()
-            
-            # Positive keywords (financial/business context)
-            positive_keywords = [
-                'profit', 'growth', 'gain', 'rise', 'surge', 'beat', 'exceed', 'strong',
-                'up', 'upgrade', 'boost', 'record', 'high', 'improved', 'expansion',
-                'success', 'positive', 'outperform', 'rally', 'soar', 'jump', 'climb',
-                'recovery', 'breakthrough', 'win', 'award', 'innovation', 'bullish'
-            ]
-            
-            # Negative keywords (financial/business context)
-            negative_keywords = [
-                'loss', 'drop', 'fall', 'decline', 'plunge', 'miss', 'below', 'weak',
-                'down', 'downgrade', 'cut', 'low', 'concern', 'warning', 'risk',
-                'fail', 'negative', 'underperform', 'crash', 'tumble', 'slide', 'slump',
-                'crisis', 'trouble', 'investigation', 'fine', 'penalty', 'bearish'
-            ]
-            
-            # Count keyword matches
-            positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
-            negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
-            
-            # Calculate sentiment score (-1 to +1)
-            total_keywords = positive_count + negative_count
-            if total_keywords == 0:
-                return {'sentiment': 'neutral', 'score': 0}
-            
-            score = (positive_count - negative_count) / total_keywords
-            
-            # Determine sentiment category
-            if score > 0.2:
-                sentiment = 'positive'
-            elif score < -0.2:
-                sentiment = 'negative'
-            else:
-                sentiment = 'neutral'
-            
-            return {'sentiment': sentiment, 'score': round(score, 2)}
+            if market_cap_b > 15:  # > $15B
+                index_name = 'S&P 500'
+            elif market_cap_b > 2:  # $2B - $15B
+                index_name = 'S&P 400 (Mid Cap)'
+            elif market_cap_b > 0.3:  # $300M - $2B
+                index_name = 'S&P 600 (Small Cap)'
+            elif market_cap > 0:  # < $300M
+                index_name = 'Micro Cap'
+        
+        return {
+            'exchange': exchange,
+            'exchange_full': exchange_full,
+            'index': index_name
+        }
+        
+    @staticmethod
+    def analyze_sentiment(text: str) -> dict:
+        """Analyze sentiment of news text using keyword matching"""
+        if not text:
+            return {'sentiment': 'neutral', 'score': 0}
+        
+        text_lower = text.lower()
+        
+        # Positive keywords (financial/business context)
+        positive_keywords = [
+            'profit', 'growth', 'gain', 'rise', 'surge', 'beat', 'exceed', 'strong',
+            'up', 'upgrade', 'boost', 'record', 'high', 'improved', 'expansion',
+            'success', 'positive', 'outperform', 'rally', 'soar', 'jump', 'climb',
+            'recovery', 'breakthrough', 'win', 'award', 'innovation', 'bullish'
+        ]
+        
+        # Negative keywords (financial/business context)
+        negative_keywords = [
+            'loss', 'drop', 'fall', 'decline', 'plunge', 'miss', 'below', 'weak',
+            'down', 'downgrade', 'cut', 'low', 'concern', 'warning', 'risk',
+            'fail', 'negative', 'underperform', 'crash', 'tumble', 'slide', 'slump',
+            'crisis', 'trouble', 'investigation', 'fine', 'penalty', 'bearish'
+        ]
+        
+        # Count keyword matches
+        positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+        negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+        
+        # Calculate sentiment score (-1 to +1)
+        total_keywords = positive_count + negative_count
+        if total_keywords == 0:
+            return {'sentiment': 'neutral', 'score': 0}
+        
+        score = (positive_count - negative_count) / total_keywords
+        
+        # Determine sentiment category
+        if score > 0.2:
+            sentiment = 'positive'
+        elif score < -0.2:
+            sentiment = 'negative'
+        else:
+            sentiment = 'neutral'
+        
+        return {'sentiment': sentiment, 'score': round(score, 2)}
     
     @staticmethod
     def calculate_read_time(text: str) -> int:
