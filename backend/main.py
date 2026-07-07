@@ -47,6 +47,12 @@ EMAIL_FILE = "captured_emails.json"
 # Email configuration - load from environment variable
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
 BREVO_LIST_ID = os.environ.get('BREVO_LIST_ID')
+FMP_API_KEY = os.environ.get('FMP_API_KEY')
+FMP_BASE_URL = "https://financialmodelingprep.com/stable"
+if FMP_API_KEY:
+    print("✓ FMP API key loaded from environment")
+else:
+    print("⚠️ WARNING: FMP API key not configured")
 
 if BREVO_API_KEY and BREVO_LIST_ID:
     print("✓ Brevo API key loaded from environment")
@@ -269,227 +275,276 @@ MARKET_BENCHMARKS = {
 class KPICalculator:
     """Calculate all 12 KPIs and their scores"""
     
-    @staticmethod
-    def get_stock_data(ticker: str):
-        """Fetch stock data with caching"""
-        cache_key = f"{ticker}_data"
-        
-        # Check cache
-        if cache_key in cache:
-            cached_data, timestamp = cache[cache_key]
-            if datetime.now() - timestamp < CACHE_DURATION:
-                print(f"Using cached data for {ticker}")
-                return cached_data
-        
-        # Fetch fresh data with Chrome impersonation
-        try:
-            from curl_cffi import requests as curl_requests
-            session = curl_requests.Session(impersonate="chrome124")
-            
-            print(f"Fetching fresh data for {ticker}")
-            stock = yf.Ticker(ticker, session=session)
-            info = stock.info
-            
-            # Check if we got valid data
-            if not info or len(info) == 0:
-                raise ValueError(f"No data returned for ticker {ticker}")
-            
-            hist = stock.history(period="1y")
-            
-            # Check if history is valid
-            if hist is None:
-                hist = stock.history(period="1y")  # Try again
-            
-            if hist is None or hist.empty:
-                print(f"Warning: No historical data for {ticker}, creating empty DataFrame")
-                import pandas as pd
-                hist = pd.DataFrame()
-            
-            # Fetch news - Updated for current yfinance structure
-            news = []
-            try:
-                print(f"Attempting to fetch news for {ticker}...")
-                
-                # Try to get news from yfinance
-                if hasattr(stock, 'news'):
-                    news_data = stock.news
-                    print(f"Raw news data type: {type(news_data)}")
-                    print(f"News data length: {len(news_data) if news_data else 0}")
-                    
-                    if news_data and len(news_data) > 0:
-                        # Print first article structure to debug
-                        print(f"First article keys: {news_data[0].keys() if news_data else 'None'}")
-                        print(f"First article sample: {news_data[0] if news_data else 'None'}")
-                        
-                        for idx, article in enumerate(news_data[:5]):  # Limit to 5
-                            # yfinance news has nested 'content' structure
-                            # Check if article has 'content' key and use that, otherwise use article directly
-                            article_data = article.get('content', article)
-                            
-                            # DEBUG: Print the article_data structure
-                            print(f"\n=== Article {idx} Debug ===")
-                            print(f"article_data keys: {article_data.keys() if isinstance(article_data, dict) else 'Not a dict'}")
-                            print(f"Has 'title': {article_data.get('title', 'NO TITLE KEY')}")
-                            print(f"Has 'provider': {article_data.get('provider', 'NO PROVIDER KEY')}")
-                            print(f"Has 'canonicalUrl': {article_data.get('canonicalUrl', 'NO URL KEY')}")
-                            
-                            # Try different possible field names from the nested content
-                            title = (article_data.get('title') or 
-                                   article_data.get('headline') or 
-                                   article_data.get('summary') or 
-                                   'No title available')
-                            
-                            # Strip HTML tags from title
-                            if title and title != 'No title available':
-                                title = strip_html_tags(title)
-                            
-                            # Publisher can be nested in provider object
-                            provider = article_data.get('provider', {})
-                            if isinstance(provider, dict):
-                                publisher = provider.get('displayName', 'Unknown source')
-                            else:
-                                publisher = (article_data.get('publisher') or 
-                                           article_data.get('source') or 
-                                           'Unknown source')
-                            
-                            # Link can be in canonicalUrl or clickThroughUrl
-                            canonical = article_data.get('canonicalUrl', {})
-                            click_through = article_data.get('clickThroughUrl', {})
-                            
-                            if isinstance(canonical, dict):
-                                link = canonical.get('url', '')
-                            elif isinstance(click_through, dict):
-                                link = click_through.get('url', '')
-                            else:
-                                link = (article_data.get('link') or 
-                                      article_data.get('url') or 
-                                      '')
-                            
-                            # Try to get timestamp - can be in multiple formats
-                            pub_time = (article_data.get('providerPublishTime') or 
-                                      article_data.get('publish_time') or 
-                                      article_data.get('publishedAt') or 
-                                      article_data.get('pubDate') or 
-                                      article_data.get('displayTime') or
-                                      0)
-                            
-                            # Convert to int if not already
-                            if isinstance(pub_time, str):
-                                try:
-                                    from dateutil import parser
-                                    pub_time = int(parser.parse(pub_time).timestamp())
-                                except:
-                                    pub_time = int(datetime.now().timestamp())
-                            else:
-                                pub_time = int(pub_time) if pub_time else int(datetime.now().timestamp())
-                            
-                            # If timestamp is in milliseconds, convert to seconds
-                            if pub_time > 10000000000:
-                                pub_time = pub_time // 1000
-                            
-                            # Extract thumbnail image
-                            thumbnail_url = None
-                            thumbnail_data = article_data.get('thumbnail', {})
-                            if isinstance(thumbnail_data, dict):
-                                # Try to get the best resolution thumbnail
-                                thumbnail_url = thumbnail_data.get('originalUrl')
-                                if not thumbnail_url and 'resolutions' in thumbnail_data:
-                                    resolutions = thumbnail_data.get('resolutions', [])
-                                    if resolutions and len(resolutions) > 0:
-                                        # Get the largest resolution available
-                                        thumbnail_url = resolutions[-1].get('url') if isinstance(resolutions[-1], dict) else None
-                            
-                            # Extract article summary/description
-                            summary = (article_data.get('summary') or 
-                                     article_data.get('description') or 
-                                     article_data.get('snippet') or 
-                                     None)
-                            
-                            # Strip HTML tags from summary
-                            if summary:
-                                summary = strip_html_tags(summary)
-                            
-                            # Analyze sentiment based on title and summary
-                            sentiment_text = f"{title} {summary if summary else ''}"
-                            sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
-                            
-                            # Calculate read time based on summary length
-                            read_time = KPICalculator.calculate_read_time(summary if summary else title)
-                            
-                            # Classify article category
-                            category = KPICalculator.classify_category(sentiment_text)
-                            
-                            # DEBUG: Show what we extracted
-                            print(f"EXTRACTED -> Title: {title}")
-                            print(f"EXTRACTED -> Publisher: {publisher}")
-                            print(f"EXTRACTED -> Link: {link}")
-                            print(f"EXTRACTED -> Thumbnail: {thumbnail_url[:50] if thumbnail_url else 'None'}")
-                            print(f"EXTRACTED -> Summary: {summary[:80] if summary else 'None'}...")
-                            print(f"EXTRACTED -> Sentiment: {sentiment_result['sentiment']} (score: {sentiment_result['score']})")
-                            print(f"EXTRACTED -> Read Time: {read_time} min")
-                            print(f"EXTRACTED -> Category: {category}")
-                            print(f"=== End Article {idx} ===\n")
-                            
-                            print(f"Article {idx}: title={title[:50] if len(title) > 50 else title}, publisher={publisher}, link={link[:50] if link and len(link) > 50 else link}")
-                            
-                            news.append({
-                                'title': title,
-                                'publisher': publisher,
-                                'link': link,
-                                'publish_time': pub_time,
-                                'type': article_data.get('type', 'article'),
-                                'thumbnail': thumbnail_url,
-                                'summary': summary,
-                                'sentiment': sentiment_result['sentiment'],
-                                'sentiment_score': sentiment_result['score'],
-                                'read_time': read_time,
-                                'category': category
-                            })
-                        
-                        print(f"Successfully parsed {len(news)} news articles")
-                    else:
-                        print("News data is empty or None")
+    
+@staticmethod
+def get_stock_data(ticker: str):
+    """Fetch stock data from Financial Modeling Prep API with caching"""
+    cache_key = f"{ticker}_data"
+ 
+    # Check cache
+    if cache_key in cache:
+        cached_data, timestamp = cache[cache_key]
+        if datetime.now() - timestamp < CACHE_DURATION:
+            print(f"Using cached data for {ticker}")
+            return cached_data
+ 
+    try:
+        print(f"Fetching fresh data for {ticker} via FMP API")
+ 
+        # Convert UK ticker format: SHEL.L -> SHEL.LSE for FMP
+        fmp_ticker = ticker
+        if ticker.endswith('.L'):
+            fmp_ticker = ticker[:-2] + '.LSE'
+ 
+        headers = {"Content-Type": "application/json"}
+        params = {"symbol": fmp_ticker, "apikey": FMP_API_KEY}
+ 
+        # ── 1. Company Profile (price, market cap, sector, description etc.) ──
+        profile_resp = requests.get(
+            f"{FMP_BASE_URL}/profile",
+            params=params,
+            headers=headers
+        )
+ 
+        if profile_resp.status_code != 200:
+            raise ValueError(f"FMP profile API error: {profile_resp.status_code} - {profile_resp.text}")
+ 
+        profile_data = profile_resp.json()
+ 
+        if not profile_data or len(profile_data) == 0:
+            raise ValueError(f"No profile data returned for ticker {ticker}")
+ 
+        profile = profile_data[0] if isinstance(profile_data, list) else profile_data
+        print(f"✓ Profile fetched for {profile.get('companyName', ticker)}")
+ 
+        # ── 2. TTM Ratios (P/E, P/B, ROE, margins, debt etc.) ──
+        ratios_resp = requests.get(
+            f"{FMP_BASE_URL}/ratios-ttm",
+            params=params,
+            headers=headers
+        )
+ 
+        ratios = {}
+        if ratios_resp.status_code == 200:
+            ratios_data = ratios_resp.json()
+            ratios = ratios_data[0] if isinstance(ratios_data, list) and len(ratios_data) > 0 else {}
+            print(f"✓ TTM Ratios fetched")
+        else:
+            print(f"⚠️ Ratios API returned {ratios_resp.status_code}")
+ 
+        # ── 3. Key Metrics TTM (EPS growth, revenue growth, beta etc.) ──
+        metrics_resp = requests.get(
+            f"{FMP_BASE_URL}/key-metrics-ttm",
+            params=params,
+            headers=headers
+        )
+ 
+        metrics = {}
+        if metrics_resp.status_code == 200:
+            metrics_data = metrics_resp.json()
+            metrics = metrics_data[0] if isinstance(metrics_data, list) and len(metrics_data) > 0 else {}
+            print(f"✓ Key Metrics fetched")
+        else:
+            print(f"⚠️ Key Metrics API returned {metrics_resp.status_code}")
+ 
+        # ── 4. Historical Prices (1 year) ──
+        hist_params = {
+            "symbol": fmp_ticker,
+            "apikey": FMP_API_KEY,
+            "from": (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
+            "to": datetime.now().strftime('%Y-%m-%d')
+        }
+ 
+        hist_resp = requests.get(
+            f"{FMP_BASE_URL}/historical-price-eod/light",
+            params=hist_params,
+            headers=headers
+        )
+ 
+        historical_prices_raw = []
+        if hist_resp.status_code == 200:
+            hist_data = hist_resp.json()
+            historical_prices_raw = hist_data if isinstance(hist_data, list) else []
+            # FMP returns newest first - reverse to get oldest first
+            historical_prices_raw = list(reversed(historical_prices_raw))
+            print(f"✓ Historical prices fetched: {len(historical_prices_raw)} data points")
+        else:
+            print(f"⚠️ Historical prices API returned {hist_resp.status_code}")
+ 
+        # ── 5. News ──
+        news_params = {
+            "symbols": fmp_ticker,
+            "apikey": FMP_API_KEY,
+            "limit": 5
+        }
+ 
+        news_resp = requests.get(
+            f"{FMP_BASE_URL}/news/stock",
+            params=news_params,
+            headers=headers
+        )
+ 
+        news = []
+        if news_resp.status_code == 200:
+            news_raw = news_resp.json()
+            if isinstance(news_raw, list):
+                for article in news_raw[:5]:
+                    title = article.get('title', 'No title available')
+                    if title:
+                        title = strip_html_tags(title)
+ 
+                    summary = article.get('text') or article.get('summary') or None
+                    if summary:
+                        summary = strip_html_tags(summary)
+ 
+                    pub_date = article.get('publishedDate', '')
+                    try:
+                        from dateutil import parser as date_parser
+                        pub_time = int(date_parser.parse(pub_date).timestamp()) if pub_date else int(datetime.now().timestamp())
+                    except:
+                        pub_time = int(datetime.now().timestamp())
+ 
+                    sentiment_text = f"{title} {summary if summary else ''}"
+                    sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
+                    read_time = KPICalculator.calculate_read_time(summary if summary else title)
+                    category = KPICalculator.classify_category(sentiment_text)
+ 
+                    news.append({
+                        'title': title,
+                        'publisher': article.get('site', 'Unknown source'),
+                        'link': article.get('url', ''),
+                        'publish_time': pub_time,
+                        'type': 'article',
+                        'thumbnail': article.get('image', None),
+                        'summary': summary,
+                        'sentiment': sentiment_result['sentiment'],
+                        'sentiment_score': sentiment_result['score'],
+                        'read_time': read_time,
+                        'category': category
+                    })
+                print(f"✓ News fetched: {len(news)} articles")
+ 
+        if not news:
+            news = [{
+                'title': f'View latest news for {ticker} on Yahoo Finance',
+                'publisher': 'Yahoo Finance',
+                'link': f'https://finance.yahoo.com/quote/{ticker}/news',
+                'publish_time': int(datetime.now().timestamp()),
+                'type': 'link'
+            }]
+ 
+        # ── 6. Calculate Moving Averages for historical prices ──
+        historical_prices = []
+        if historical_prices_raw:
+            closes = [p.get('close', 0) for p in historical_prices_raw]
+ 
+            for i, price_point in enumerate(historical_prices_raw):
+                # 50-day MA
+                if i >= 49:
+                    ma_50 = sum(closes[i-49:i+1]) / 50
                 else:
-                    print("Stock object has no 'news' attribute")
-                
-                # If still no news, provide a fallback
-                if len(news) == 0:
-                    print("No news found, creating fallback link")
-                    news = [{
-                        'title': f'View latest news for {ticker} on Yahoo Finance',
-                        'publisher': 'Yahoo Finance',
-                        'link': f'https://finance.yahoo.com/quote/{ticker}/news',
-                        'publish_time': int(datetime.now().timestamp()),
-                        'type': 'link'
-                    }]
-                    
-            except Exception as e:
-                print(f"Error fetching news: {e}")
-                import traceback
-                print(traceback.format_exc())
-                news = [{
-                    'title': f'Unable to fetch news. View on Yahoo Finance',
-                    'publisher': 'System',
-                    'link': f'https://finance.yahoo.com/quote/{ticker}/news',
-                    'publish_time': int(datetime.now().timestamp()),
-                    'type': 'error'
-                }]
-            
-            data = {'info': info, 'history': hist, 'news': news}
-            cache[cache_key] = (data, datetime.now())
-            
-            print(f"Successfully fetched data for {ticker}")
-            print(f"Info keys: {list(info.keys())[:10]}...")  # Show first 10 keys
-            print(f"History shape: {hist.shape if not hist.empty else 'empty'}")
-            
-            return data
-            
-        except Exception as e:
-            print(f"Error fetching data: {str(e)}")
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Unable to fetch data for {ticker}. Error: {str(e)}"
-            )
+                    ma_50 = sum(closes[:i+1]) / (i+1)
+ 
+                # 200-day MA
+                if i >= 199:
+                    ma_200 = sum(closes[i-199:i+1]) / 200
+                else:
+                    ma_200 = sum(closes[:i+1]) / (i+1)
+ 
+                historical_prices.append({
+                    'date': price_point.get('date', ''),
+                    'price': round(float(price_point.get('close', 0)), 2),
+                    'ma_50': round(ma_50, 2),
+                    'ma_200': round(ma_200, 2)
+                })
+ 
+        # ── 7. Build unified info dict (same structure as yfinance) ──
+        # Map FMP fields to the same field names your KPI calculator expects
+        current_price = profile.get('price') or profile.get('lastPrice')
+        
+        # 52-week high/low from historical prices
+        if historical_prices_raw:
+            closes_year = [p.get('close', 0) for p in historical_prices_raw]
+            fifty_two_week_high = max(closes_year)
+            fifty_two_week_low = min(closes_year)
+        else:
+            fifty_two_week_high = profile.get('range', '').split('-')[-1].strip() if profile.get('range') else None
+            fifty_two_week_low = profile.get('range', '').split('-')[0].strip() if profile.get('range') else None
+            try:
+                fifty_two_week_high = float(fifty_two_week_high) if fifty_two_week_high else None
+                fifty_two_week_low = float(fifty_two_week_low) if fifty_two_week_low else None
+            except:
+                fifty_two_week_high = None
+                fifty_two_week_low = None
+ 
+        info = {
+            # Identity
+            'longName': profile.get('companyName', ticker),
+            'symbol': ticker,
+            'currency': profile.get('currency', 'USD'),
+            'exchange': profile.get('exchangeShortName', ''),
+            'sector': profile.get('sector', ''),
+            'industry': profile.get('industry', ''),
+            'longBusinessSummary': profile.get('description', ''),
+            'website': profile.get('website', ''),
+            'fullTimeEmployees': profile.get('fullTimeEmployeesCount') or profile.get('employees'),
+            'city': profile.get('city', ''),
+            'country': profile.get('country', ''),
+ 
+            # Price data
+            'currentPrice': current_price,
+            'regularMarketPrice': current_price,
+            'previousClose': profile.get('previousClose'),
+            'dayLow': profile.get('dayLow'),
+            'dayHigh': profile.get('dayHigh'),
+            'fiftyTwoWeekHigh': fifty_two_week_high,
+            'fiftyTwoWeekLow': fifty_two_week_low,
+            'volume': profile.get('volAvg'),
+            'averageVolume': profile.get('volAvg'),
+            'marketCap': profile.get('mktCap'),
+ 
+            # Valuation ratios from TTM ratios
+            'trailingPE': ratios.get('peRatioTTM'),
+            'priceToBook': ratios.get('priceToBookRatioTTM'),
+ 
+            # Profitability
+            'returnOnEquity': ratios.get('returnOnEquityTTM'),
+            'profitMargins': ratios.get('netProfitMarginTTM'),
+            'operatingMargins': ratios.get('operatingProfitMarginTTM'),
+ 
+            # Financial health
+            'debtToEquity': ratios.get('debtEquityRatioTTM'),
+            'currentRatio': ratios.get('currentRatioTTM'),
+ 
+            # Growth (from key metrics)
+            'revenueGrowth': metrics.get('revenueGrowthTTM') or ratios.get('revenueGrowthTTM'),
+            'earningsGrowth': metrics.get('epsgrowthTTM') or metrics.get('epsGrowthTTM'),
+ 
+            # Technical
+            'beta': profile.get('beta'),
+            'dividendYield': ratios.get('dividendYieldTTM'),
+        }
+ 
+        data = {
+            'info': info,
+            'history': historical_prices_raw,
+            'news': news,
+            'historical_prices': historical_prices
+        }
+ 
+        cache[cache_key] = (data, datetime.now())
+ 
+        print(f"✓ Successfully fetched all data for {ticker} via FMP")
+        return data
+ 
+    except Exception as e:
+        print(f"✗ Error fetching data for {ticker}: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unable to fetch data for {ticker}. Error: {str(e)}"
+        )
     
     @staticmethod
     def safe_get(data: dict, key: str, default=None):
