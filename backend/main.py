@@ -1192,22 +1192,8 @@ class KPICalculator:
         try:
             hist_data = data.get('historical_prices')
             if hist_data is not None and len(hist_data) > 0:
-                hist_12m = hist_data.tail(252)
-                
-                # Calculate moving averages
-                # 50-day MA
-                ma_50 = hist_12m['Close'].rolling(window=50, min_periods=1).mean()
-                # 200-day MA  
-                ma_200 = hist_12m['Close'].rolling(window=200, min_periods=1).mean()
-                
-                for i, price_point in enumerate(hist_data):
-                    historical_prices.append({
-                        'date': price_point.get('date', ''),
-                        'price': price_point.get('price', 0),
-                        'ma_50': price_point.get('ma_50'),
-                        'ma_200': price_point.get('ma_200')
-                    })
-                print(f"Fetched {len(historical_prices)} historical price points with moving averages")
+                historical_prices = hist_data
+                print(f"Fetched {len(historical_prices)} historical price points")
             else:
                 print("No historical data available")
         except Exception as e:
