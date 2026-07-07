@@ -1,9 +1,9 @@
 fastapi
 uvicorn[standard]
-yfinance==1.5.1
 pandas
 numpy
 pydantic
 python-dateutil
 requests
 python-dotenv
+curl_cffi
