@@ -276,398 +276,398 @@ class KPICalculator:
     """Calculate all 12 KPIs and their scores"""
     
     
-@staticmethod
-def get_stock_data(ticker: str):
-    """Fetch stock data from Financial Modeling Prep API with caching"""
-    cache_key = f"{ticker}_data"
- 
-    # Check cache
-    if cache_key in cache:
-        cached_data, timestamp = cache[cache_key]
-        if datetime.now() - timestamp < CACHE_DURATION:
-            print(f"Using cached data for {ticker}")
-            return cached_data
- 
-    try:
-        print(f"Fetching fresh data for {ticker} via FMP API")
- 
-        # Convert UK ticker format: SHEL.L -> SHEL.LSE for FMP
-        fmp_ticker = ticker
-        if ticker.endswith('.L'):
-            fmp_ticker = ticker[:-2] + '.LSE'
- 
-        headers = {"Content-Type": "application/json"}
-        params = {"symbol": fmp_ticker, "apikey": FMP_API_KEY}
- 
-        # ── 1. Company Profile (price, market cap, sector, description etc.) ──
-        profile_resp = requests.get(
-            f"{FMP_BASE_URL}/profile",
-            params=params,
-            headers=headers
-        )
- 
-        if profile_resp.status_code != 200:
-            raise ValueError(f"FMP profile API error: {profile_resp.status_code} - {profile_resp.text}")
- 
-        profile_data = profile_resp.json()
- 
-        if not profile_data or len(profile_data) == 0:
-            raise ValueError(f"No profile data returned for ticker {ticker}")
- 
-        profile = profile_data[0] if isinstance(profile_data, list) else profile_data
-        print(f"✓ Profile fetched for {profile.get('companyName', ticker)}")
- 
-        # ── 2. TTM Ratios (P/E, P/B, ROE, margins, debt etc.) ──
-        ratios_resp = requests.get(
-            f"{FMP_BASE_URL}/ratios-ttm",
-            params=params,
-            headers=headers
-        )
- 
-        ratios = {}
-        if ratios_resp.status_code == 200:
-            ratios_data = ratios_resp.json()
-            ratios = ratios_data[0] if isinstance(ratios_data, list) and len(ratios_data) > 0 else {}
-            print(f"✓ TTM Ratios fetched")
-        else:
-            print(f"⚠️ Ratios API returned {ratios_resp.status_code}")
- 
-        # ── 3. Key Metrics TTM (EPS growth, revenue growth, beta etc.) ──
-        metrics_resp = requests.get(
-            f"{FMP_BASE_URL}/key-metrics-ttm",
-            params=params,
-            headers=headers
-        )
- 
-        metrics = {}
-        if metrics_resp.status_code == 200:
-            metrics_data = metrics_resp.json()
-            metrics = metrics_data[0] if isinstance(metrics_data, list) and len(metrics_data) > 0 else {}
-            print(f"✓ Key Metrics fetched")
-        else:
-            print(f"⚠️ Key Metrics API returned {metrics_resp.status_code}")
- 
-        # ── 4. Historical Prices (1 year) ──
-        hist_params = {
-            "symbol": fmp_ticker,
-            "apikey": FMP_API_KEY,
-            "from": (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
-            "to": datetime.now().strftime('%Y-%m-%d')
-        }
- 
-        hist_resp = requests.get(
-            f"{FMP_BASE_URL}/historical-price-eod/light",
-            params=hist_params,
-            headers=headers
-        )
- 
-        historical_prices_raw = []
-        if hist_resp.status_code == 200:
-            hist_data = hist_resp.json()
-            historical_prices_raw = hist_data if isinstance(hist_data, list) else []
-            # FMP returns newest first - reverse to get oldest first
-            historical_prices_raw = list(reversed(historical_prices_raw))
-            print(f"✓ Historical prices fetched: {len(historical_prices_raw)} data points")
-        else:
-            print(f"⚠️ Historical prices API returned {hist_resp.status_code}")
- 
-        # ── 5. News ──
-        news_params = {
-            "symbols": fmp_ticker,
-            "apikey": FMP_API_KEY,
-            "limit": 5
-        }
- 
-        news_resp = requests.get(
-            f"{FMP_BASE_URL}/news/stock",
-            params=news_params,
-            headers=headers
-        )
- 
-        news = []
-        if news_resp.status_code == 200:
-            news_raw = news_resp.json()
-            if isinstance(news_raw, list):
-                for article in news_raw[:5]:
-                    title = article.get('title', 'No title available')
-                    if title:
-                        title = strip_html_tags(title)
- 
-                    summary = article.get('text') or article.get('summary') or None
-                    if summary:
-                        summary = strip_html_tags(summary)
- 
-                    pub_date = article.get('publishedDate', '')
-                    try:
-                        from dateutil import parser as date_parser
-                        pub_time = int(date_parser.parse(pub_date).timestamp()) if pub_date else int(datetime.now().timestamp())
-                    except:
-                        pub_time = int(datetime.now().timestamp())
- 
-                    sentiment_text = f"{title} {summary if summary else ''}"
-                    sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
-                    read_time = KPICalculator.calculate_read_time(summary if summary else title)
-                    category = KPICalculator.classify_category(sentiment_text)
- 
-                    news.append({
-                        'title': title,
-                        'publisher': article.get('site', 'Unknown source'),
-                        'link': article.get('url', ''),
-                        'publish_time': pub_time,
-                        'type': 'article',
-                        'thumbnail': article.get('image', None),
-                        'summary': summary,
-                        'sentiment': sentiment_result['sentiment'],
-                        'sentiment_score': sentiment_result['score'],
-                        'read_time': read_time,
-                        'category': category
+    @staticmethod
+    def get_stock_data(ticker: str):
+        """Fetch stock data from Financial Modeling Prep API with caching"""
+        cache_key = f"{ticker}_data"
+    
+        # Check cache
+        if cache_key in cache:
+            cached_data, timestamp = cache[cache_key]
+            if datetime.now() - timestamp < CACHE_DURATION:
+                print(f"Using cached data for {ticker}")
+                return cached_data
+    
+        try:
+            print(f"Fetching fresh data for {ticker} via FMP API")
+    
+            # Convert UK ticker format: SHEL.L -> SHEL.LSE for FMP
+            fmp_ticker = ticker
+            if ticker.endswith('.L'):
+                fmp_ticker = ticker[:-2] + '.LSE'
+    
+            headers = {"Content-Type": "application/json"}
+            params = {"symbol": fmp_ticker, "apikey": FMP_API_KEY}
+    
+            # ── 1. Company Profile (price, market cap, sector, description etc.) ──
+            profile_resp = requests.get(
+                f"{FMP_BASE_URL}/profile",
+                params=params,
+                headers=headers
+            )
+    
+            if profile_resp.status_code != 200:
+                raise ValueError(f"FMP profile API error: {profile_resp.status_code} - {profile_resp.text}")
+    
+            profile_data = profile_resp.json()
+    
+            if not profile_data or len(profile_data) == 0:
+                raise ValueError(f"No profile data returned for ticker {ticker}")
+    
+            profile = profile_data[0] if isinstance(profile_data, list) else profile_data
+            print(f"✓ Profile fetched for {profile.get('companyName', ticker)}")
+    
+            # ── 2. TTM Ratios (P/E, P/B, ROE, margins, debt etc.) ──
+            ratios_resp = requests.get(
+                f"{FMP_BASE_URL}/ratios-ttm",
+                params=params,
+                headers=headers
+            )
+    
+            ratios = {}
+            if ratios_resp.status_code == 200:
+                ratios_data = ratios_resp.json()
+                ratios = ratios_data[0] if isinstance(ratios_data, list) and len(ratios_data) > 0 else {}
+                print(f"✓ TTM Ratios fetched")
+            else:
+                print(f"⚠️ Ratios API returned {ratios_resp.status_code}")
+    
+            # ── 3. Key Metrics TTM (EPS growth, revenue growth, beta etc.) ──
+            metrics_resp = requests.get(
+                f"{FMP_BASE_URL}/key-metrics-ttm",
+                params=params,
+                headers=headers
+            )
+    
+            metrics = {}
+            if metrics_resp.status_code == 200:
+                metrics_data = metrics_resp.json()
+                metrics = metrics_data[0] if isinstance(metrics_data, list) and len(metrics_data) > 0 else {}
+                print(f"✓ Key Metrics fetched")
+            else:
+                print(f"⚠️ Key Metrics API returned {metrics_resp.status_code}")
+    
+            # ── 4. Historical Prices (1 year) ──
+            hist_params = {
+                "symbol": fmp_ticker,
+                "apikey": FMP_API_KEY,
+                "from": (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
+                "to": datetime.now().strftime('%Y-%m-%d')
+            }
+    
+            hist_resp = requests.get(
+                f"{FMP_BASE_URL}/historical-price-eod/light",
+                params=hist_params,
+                headers=headers
+            )
+    
+            historical_prices_raw = []
+            if hist_resp.status_code == 200:
+                hist_data = hist_resp.json()
+                historical_prices_raw = hist_data if isinstance(hist_data, list) else []
+                # FMP returns newest first - reverse to get oldest first
+                historical_prices_raw = list(reversed(historical_prices_raw))
+                print(f"✓ Historical prices fetched: {len(historical_prices_raw)} data points")
+            else:
+                print(f"⚠️ Historical prices API returned {hist_resp.status_code}")
+    
+            # ── 5. News ──
+            news_params = {
+                "symbols": fmp_ticker,
+                "apikey": FMP_API_KEY,
+                "limit": 5
+            }
+    
+            news_resp = requests.get(
+                f"{FMP_BASE_URL}/news/stock",
+                params=news_params,
+                headers=headers
+            )
+    
+            news = []
+            if news_resp.status_code == 200:
+                news_raw = news_resp.json()
+                if isinstance(news_raw, list):
+                    for article in news_raw[:5]:
+                        title = article.get('title', 'No title available')
+                        if title:
+                            title = strip_html_tags(title)
+    
+                        summary = article.get('text') or article.get('summary') or None
+                        if summary:
+                            summary = strip_html_tags(summary)
+    
+                        pub_date = article.get('publishedDate', '')
+                        try:
+                            from dateutil import parser as date_parser
+                            pub_time = int(date_parser.parse(pub_date).timestamp()) if pub_date else int(datetime.now().timestamp())
+                        except:
+                            pub_time = int(datetime.now().timestamp())
+    
+                        sentiment_text = f"{title} {summary if summary else ''}"
+                        sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
+                        read_time = KPICalculator.calculate_read_time(summary if summary else title)
+                        category = KPICalculator.classify_category(sentiment_text)
+    
+                        news.append({
+                            'title': title,
+                            'publisher': article.get('site', 'Unknown source'),
+                            'link': article.get('url', ''),
+                            'publish_time': pub_time,
+                            'type': 'article',
+                            'thumbnail': article.get('image', None),
+                            'summary': summary,
+                            'sentiment': sentiment_result['sentiment'],
+                            'sentiment_score': sentiment_result['score'],
+                            'read_time': read_time,
+                            'category': category
+                        })
+                    print(f"✓ News fetched: {len(news)} articles")
+    
+            if not news:
+                news = [{
+                    'title': f'View latest news for {ticker} on Yahoo Finance',
+                    'publisher': 'Yahoo Finance',
+                    'link': f'https://finance.yahoo.com/quote/{ticker}/news',
+                    'publish_time': int(datetime.now().timestamp()),
+                    'type': 'link'
+                }]
+    
+            # ── 6. Calculate Moving Averages for historical prices ──
+            historical_prices = []
+            if historical_prices_raw:
+                closes = [p.get('close', 0) for p in historical_prices_raw]
+    
+                for i, price_point in enumerate(historical_prices_raw):
+                    # 50-day MA
+                    if i >= 49:
+                        ma_50 = sum(closes[i-49:i+1]) / 50
+                    else:
+                        ma_50 = sum(closes[:i+1]) / (i+1)
+    
+                    # 200-day MA
+                    if i >= 199:
+                        ma_200 = sum(closes[i-199:i+1]) / 200
+                    else:
+                        ma_200 = sum(closes[:i+1]) / (i+1)
+    
+                    historical_prices.append({
+                        'date': price_point.get('date', ''),
+                        'price': round(float(price_point.get('close', 0)), 2),
+                        'ma_50': round(ma_50, 2),
+                        'ma_200': round(ma_200, 2)
                     })
-                print(f"✓ News fetched: {len(news)} articles")
- 
-        if not news:
-            news = [{
-                'title': f'View latest news for {ticker} on Yahoo Finance',
-                'publisher': 'Yahoo Finance',
-                'link': f'https://finance.yahoo.com/quote/{ticker}/news',
-                'publish_time': int(datetime.now().timestamp()),
-                'type': 'link'
-            }]
- 
-        # ── 6. Calculate Moving Averages for historical prices ──
-        historical_prices = []
-        if historical_prices_raw:
-            closes = [p.get('close', 0) for p in historical_prices_raw]
- 
-            for i, price_point in enumerate(historical_prices_raw):
-                # 50-day MA
-                if i >= 49:
-                    ma_50 = sum(closes[i-49:i+1]) / 50
-                else:
-                    ma_50 = sum(closes[:i+1]) / (i+1)
- 
-                # 200-day MA
-                if i >= 199:
-                    ma_200 = sum(closes[i-199:i+1]) / 200
-                else:
-                    ma_200 = sum(closes[:i+1]) / (i+1)
- 
-                historical_prices.append({
-                    'date': price_point.get('date', ''),
-                    'price': round(float(price_point.get('close', 0)), 2),
-                    'ma_50': round(ma_50, 2),
-                    'ma_200': round(ma_200, 2)
-                })
- 
-        # ── 7. Build unified info dict (same structure as yfinance) ──
-        # Map FMP fields to the same field names your KPI calculator expects
-        current_price = profile.get('price') or profile.get('lastPrice')
-        
-        # 52-week high/low from historical prices
-        if historical_prices_raw:
-            closes_year = [p.get('close', 0) for p in historical_prices_raw]
-            fifty_two_week_high = max(closes_year)
-            fifty_two_week_low = min(closes_year)
-        else:
-            fifty_two_week_high = profile.get('range', '').split('-')[-1].strip() if profile.get('range') else None
-            fifty_two_week_low = profile.get('range', '').split('-')[0].strip() if profile.get('range') else None
-            try:
-                fifty_two_week_high = float(fifty_two_week_high) if fifty_two_week_high else None
-                fifty_two_week_low = float(fifty_two_week_low) if fifty_two_week_low else None
-            except:
-                fifty_two_week_high = None
-                fifty_two_week_low = None
- 
-        info = {
-            # Identity
-            'longName': profile.get('companyName', ticker),
-            'symbol': ticker,
-            'currency': profile.get('currency', 'USD'),
-            'exchange': profile.get('exchangeShortName', ''),
-            'sector': profile.get('sector', ''),
-            'industry': profile.get('industry', ''),
-            'longBusinessSummary': profile.get('description', ''),
-            'website': profile.get('website', ''),
-            'fullTimeEmployees': profile.get('fullTimeEmployeesCount') or profile.get('employees'),
-            'city': profile.get('city', ''),
-            'country': profile.get('country', ''),
- 
-            # Price data
-            'currentPrice': current_price,
-            'regularMarketPrice': current_price,
-            'previousClose': profile.get('previousClose'),
-            'dayLow': profile.get('dayLow'),
-            'dayHigh': profile.get('dayHigh'),
-            'fiftyTwoWeekHigh': fifty_two_week_high,
-            'fiftyTwoWeekLow': fifty_two_week_low,
-            'volume': profile.get('volAvg'),
-            'averageVolume': profile.get('volAvg'),
-            'marketCap': profile.get('mktCap'),
- 
-            # Valuation ratios from TTM ratios
-            'trailingPE': ratios.get('peRatioTTM'),
-            'priceToBook': ratios.get('priceToBookRatioTTM'),
- 
-            # Profitability
-            'returnOnEquity': ratios.get('returnOnEquityTTM'),
-            'profitMargins': ratios.get('netProfitMarginTTM'),
-            'operatingMargins': ratios.get('operatingProfitMarginTTM'),
- 
-            # Financial health
-            'debtToEquity': ratios.get('debtEquityRatioTTM'),
-            'currentRatio': ratios.get('currentRatioTTM'),
- 
-            # Growth (from key metrics)
-            'revenueGrowth': metrics.get('revenueGrowthTTM') or ratios.get('revenueGrowthTTM'),
-            'earningsGrowth': metrics.get('epsgrowthTTM') or metrics.get('epsGrowthTTM'),
- 
-            # Technical
-            'beta': profile.get('beta'),
-            'dividendYield': ratios.get('dividendYieldTTM'),
-        }
- 
-        data = {
-            'info': info,
-            'history': historical_prices_raw,
-            'news': news,
-            'historical_prices': historical_prices
-        }
- 
-        cache[cache_key] = (data, datetime.now())
- 
-        print(f"✓ Successfully fetched all data for {ticker} via FMP")
-        return data
- 
-    except Exception as e:
-        print(f"✗ Error fetching data for {ticker}: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        raise HTTPException(
-            status_code=404,
-            detail=f"Unable to fetch data for {ticker}. Error: {str(e)}"
-        )
     
-    @staticmethod
-    def safe_get(data: dict, key: str, default=None):
-        """Safely get value from dictionary"""
-        return data.get(key, default)
+            # ── 7. Build unified info dict (same structure as yfinance) ──
+            # Map FMP fields to the same field names your KPI calculator expects
+            current_price = profile.get('price') or profile.get('lastPrice')
+            
+            # 52-week high/low from historical prices
+            if historical_prices_raw:
+                closes_year = [p.get('close', 0) for p in historical_prices_raw]
+                fifty_two_week_high = max(closes_year)
+                fifty_two_week_low = min(closes_year)
+            else:
+                fifty_two_week_high = profile.get('range', '').split('-')[-1].strip() if profile.get('range') else None
+                fifty_two_week_low = profile.get('range', '').split('-')[0].strip() if profile.get('range') else None
+                try:
+                    fifty_two_week_high = float(fifty_two_week_high) if fifty_two_week_high else None
+                    fifty_two_week_low = float(fifty_two_week_low) if fifty_two_week_low else None
+                except:
+                    fifty_two_week_high = None
+                    fifty_two_week_low = None
     
-    @staticmethod
-    def determine_exchange_and_index(info: dict, ticker: str):
-        """Determine exchange and stock index (UK or US) based on market cap and ticker"""
-        exchange = info.get('exchange', '')
-        market_cap = info.get('marketCap', 0)
+            info = {
+                # Identity
+                'longName': profile.get('companyName', ticker),
+                'symbol': ticker,
+                'currency': profile.get('currency', 'USD'),
+                'exchange': profile.get('exchangeShortName', ''),
+                'sector': profile.get('sector', ''),
+                'industry': profile.get('industry', ''),
+                'longBusinessSummary': profile.get('description', ''),
+                'website': profile.get('website', ''),
+                'fullTimeEmployees': profile.get('fullTimeEmployeesCount') or profile.get('employees'),
+                'city': profile.get('city', ''),
+                'country': profile.get('country', ''),
+    
+                # Price data
+                'currentPrice': current_price,
+                'regularMarketPrice': current_price,
+                'previousClose': profile.get('previousClose'),
+                'dayLow': profile.get('dayLow'),
+                'dayHigh': profile.get('dayHigh'),
+                'fiftyTwoWeekHigh': fifty_two_week_high,
+                'fiftyTwoWeekLow': fifty_two_week_low,
+                'volume': profile.get('volAvg'),
+                'averageVolume': profile.get('volAvg'),
+                'marketCap': profile.get('mktCap'),
+    
+                # Valuation ratios from TTM ratios
+                'trailingPE': ratios.get('peRatioTTM'),
+                'priceToBook': ratios.get('priceToBookRatioTTM'),
+    
+                # Profitability
+                'returnOnEquity': ratios.get('returnOnEquityTTM'),
+                'profitMargins': ratios.get('netProfitMarginTTM'),
+                'operatingMargins': ratios.get('operatingProfitMarginTTM'),
+    
+                # Financial health
+                'debtToEquity': ratios.get('debtEquityRatioTTM'),
+                'currentRatio': ratios.get('currentRatioTTM'),
+    
+                # Growth (from key metrics)
+                'revenueGrowth': metrics.get('revenueGrowthTTM') or ratios.get('revenueGrowthTTM'),
+                'earningsGrowth': metrics.get('epsgrowthTTM') or metrics.get('epsGrowthTTM'),
+    
+                # Technical
+                'beta': profile.get('beta'),
+                'dividendYield': ratios.get('dividendYieldTTM'),
+            }
+    
+            data = {
+                'info': info,
+                'history': historical_prices_raw,
+                'news': news,
+                'historical_prices': historical_prices
+            }
+    
+            cache[cache_key] = (data, datetime.now())
+    
+            print(f"✓ Successfully fetched all data for {ticker} via FMP")
+            return data
+    
+        except Exception as e:
+            print(f"✗ Error fetching data for {ticker}: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unable to fetch data for {ticker}. Error: {str(e)}"
+            )
         
-        # Get full exchange name
-        exchange_map = {
-            'LSE': 'London Stock Exchange',
-            'LON': 'London Stock Exchange',
-            'NYSE': 'New York Stock Exchange',
-            'NMS': 'NASDAQ',
-            'NGM': 'NASDAQ',
-            'NYQ': 'New York Stock Exchange',
-        }
+        @staticmethod
+        def safe_get(data: dict, key: str, default=None):
+            """Safely get value from dictionary"""
+            return data.get(key, default)
         
-        exchange_full = exchange_map.get(exchange, exchange or 'Unknown')
-        
-        # Determine index based on market cap and ticker
-        index_name = None
-        
-        # UK indices (for .L tickers)
-        if ticker.endswith('.L'):
-            ticker_upper = ticker.upper()
-        
-            # Known FTSE 100 stocks (for edge cases with market cap < £7B)
-            known_ftse_100 = {
-                'CTEC.L',   # Convatec - £4.8B market cap
-                'RR.L',     # Rolls-Royce - can be below £7B
-                'BA.L',     # BAE Systems
-                'SMDS.L',   # Smith & Nephew
-                'PSON.L',   # Pearson
-                'WEIR.L',   # Weir Group
-                'CRDA.L',   # Croda International
-                'IMI.L',    # IMI plc
-                'SMIN.L',   # Smiths Group
-                'DCC.L',    # DCC plc
-                'HWDN.L',   # Howden Joinery
-                # Add more as you encounter misclassifications
+        @staticmethod
+        def determine_exchange_and_index(info: dict, ticker: str):
+            """Determine exchange and stock index (UK or US) based on market cap and ticker"""
+            exchange = info.get('exchange', '')
+            market_cap = info.get('marketCap', 0)
+            
+            # Get full exchange name
+            exchange_map = {
+                'LSE': 'London Stock Exchange',
+                'LON': 'London Stock Exchange',
+                'NYSE': 'New York Stock Exchange',
+                'NMS': 'NASDAQ',
+                'NGM': 'NASDAQ',
+                'NYQ': 'New York Stock Exchange',
             }
             
-            # Check if it's a known FTSE 100 stock first
-            if ticker_upper in known_ftse_100:
-                index_name = 'FTSE 100'
-            # Then use market cap thresholds
-            elif market_cap > 7_000_000_000:  # > £7B
-                index_name = 'FTSE 100'
-            elif market_cap > 500_000_000:  # £500M - £7B
-                index_name = 'FTSE 250'
-            elif market_cap > 0:  # < £500M
-                index_name = 'FTSE Small Cap / AIM'
-
-        
-        # US indices (for non-.L tickers with US exchanges)
-        elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
-            # Convert market cap to billions for easier comparison
-            market_cap_b = market_cap / 1_000_000_000
+            exchange_full = exchange_map.get(exchange, exchange or 'Unknown')
             
-            if market_cap_b > 15:  # > $15B
-                index_name = 'S&P 500'
-            elif market_cap_b > 2:  # $2B - $15B
-                index_name = 'S&P 400 (Mid Cap)'
-            elif market_cap_b > 0.3:  # $300M - $2B
-                index_name = 'S&P 600 (Small Cap)'
-            elif market_cap > 0:  # < $300M
-                index_name = 'Micro Cap'
+            # Determine index based on market cap and ticker
+            index_name = None
+            
+            # UK indices (for .L tickers)
+            if ticker.endswith('.L'):
+                ticker_upper = ticker.upper()
+            
+                # Known FTSE 100 stocks (for edge cases with market cap < £7B)
+                known_ftse_100 = {
+                    'CTEC.L',   # Convatec - £4.8B market cap
+                    'RR.L',     # Rolls-Royce - can be below £7B
+                    'BA.L',     # BAE Systems
+                    'SMDS.L',   # Smith & Nephew
+                    'PSON.L',   # Pearson
+                    'WEIR.L',   # Weir Group
+                    'CRDA.L',   # Croda International
+                    'IMI.L',    # IMI plc
+                    'SMIN.L',   # Smiths Group
+                    'DCC.L',    # DCC plc
+                    'HWDN.L',   # Howden Joinery
+                    # Add more as you encounter misclassifications
+                }
+                
+                # Check if it's a known FTSE 100 stock first
+                if ticker_upper in known_ftse_100:
+                    index_name = 'FTSE 100'
+                # Then use market cap thresholds
+                elif market_cap > 7_000_000_000:  # > £7B
+                    index_name = 'FTSE 100'
+                elif market_cap > 500_000_000:  # £500M - £7B
+                    index_name = 'FTSE 250'
+                elif market_cap > 0:  # < £500M
+                    index_name = 'FTSE Small Cap / AIM'
+
+            
+            # US indices (for non-.L tickers with US exchanges)
+            elif exchange in ['NYSE', 'NMS', 'NGM', 'NYQ', 'NASDAQ']:
+                # Convert market cap to billions for easier comparison
+                market_cap_b = market_cap / 1_000_000_000
+                
+                if market_cap_b > 15:  # > $15B
+                    index_name = 'S&P 500'
+                elif market_cap_b > 2:  # $2B - $15B
+                    index_name = 'S&P 400 (Mid Cap)'
+                elif market_cap_b > 0.3:  # $300M - $2B
+                    index_name = 'S&P 600 (Small Cap)'
+                elif market_cap > 0:  # < $300M
+                    index_name = 'Micro Cap'
+            
+            return {
+                'exchange': exchange,
+                'exchange_full': exchange_full,
+                'index': index_name
+            }
         
-        return {
-            'exchange': exchange,
-            'exchange_full': exchange_full,
-            'index': index_name
-        }
-    
-    @staticmethod
-    def analyze_sentiment(text: str) -> dict:
-        """Analyze sentiment of news text using keyword matching"""
-        if not text:
-            return {'sentiment': 'neutral', 'score': 0}
-        
-        text_lower = text.lower()
-        
-        # Positive keywords (financial/business context)
-        positive_keywords = [
-            'profit', 'growth', 'gain', 'rise', 'surge', 'beat', 'exceed', 'strong',
-            'up', 'upgrade', 'boost', 'record', 'high', 'improved', 'expansion',
-            'success', 'positive', 'outperform', 'rally', 'soar', 'jump', 'climb',
-            'recovery', 'breakthrough', 'win', 'award', 'innovation', 'bullish'
-        ]
-        
-        # Negative keywords (financial/business context)
-        negative_keywords = [
-            'loss', 'drop', 'fall', 'decline', 'plunge', 'miss', 'below', 'weak',
-            'down', 'downgrade', 'cut', 'low', 'concern', 'warning', 'risk',
-            'fail', 'negative', 'underperform', 'crash', 'tumble', 'slide', 'slump',
-            'crisis', 'trouble', 'investigation', 'fine', 'penalty', 'bearish'
-        ]
-        
-        # Count keyword matches
-        positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
-        negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
-        
-        # Calculate sentiment score (-1 to +1)
-        total_keywords = positive_count + negative_count
-        if total_keywords == 0:
-            return {'sentiment': 'neutral', 'score': 0}
-        
-        score = (positive_count - negative_count) / total_keywords
-        
-        # Determine sentiment category
-        if score > 0.2:
-            sentiment = 'positive'
-        elif score < -0.2:
-            sentiment = 'negative'
-        else:
-            sentiment = 'neutral'
-        
-        return {'sentiment': sentiment, 'score': round(score, 2)}
+        @staticmethod
+        def analyze_sentiment(text: str) -> dict:
+            """Analyze sentiment of news text using keyword matching"""
+            if not text:
+                return {'sentiment': 'neutral', 'score': 0}
+            
+            text_lower = text.lower()
+            
+            # Positive keywords (financial/business context)
+            positive_keywords = [
+                'profit', 'growth', 'gain', 'rise', 'surge', 'beat', 'exceed', 'strong',
+                'up', 'upgrade', 'boost', 'record', 'high', 'improved', 'expansion',
+                'success', 'positive', 'outperform', 'rally', 'soar', 'jump', 'climb',
+                'recovery', 'breakthrough', 'win', 'award', 'innovation', 'bullish'
+            ]
+            
+            # Negative keywords (financial/business context)
+            negative_keywords = [
+                'loss', 'drop', 'fall', 'decline', 'plunge', 'miss', 'below', 'weak',
+                'down', 'downgrade', 'cut', 'low', 'concern', 'warning', 'risk',
+                'fail', 'negative', 'underperform', 'crash', 'tumble', 'slide', 'slump',
+                'crisis', 'trouble', 'investigation', 'fine', 'penalty', 'bearish'
+            ]
+            
+            # Count keyword matches
+            positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+            negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+            
+            # Calculate sentiment score (-1 to +1)
+            total_keywords = positive_count + negative_count
+            if total_keywords == 0:
+                return {'sentiment': 'neutral', 'score': 0}
+            
+            score = (positive_count - negative_count) / total_keywords
+            
+            # Determine sentiment category
+            if score > 0.2:
+                sentiment = 'positive'
+            elif score < -0.2:
+                sentiment = 'negative'
+            else:
+                sentiment = 'neutral'
+            
+            return {'sentiment': sentiment, 'score': round(score, 2)}
     
     @staticmethod
     def calculate_read_time(text: str) -> int:
