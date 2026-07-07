@@ -346,6 +346,20 @@ class KPICalculator:
                 print(f"✓ Key Metrics fetched")
             else:
                 print(f"⚠️ Key Metrics API returned {metrics_resp.status_code}")
+            # ── 3b. Financial Growth (revenue growth, EPS growth) ──
+            growth_resp = requests.get(
+                f"{FMP_BASE_URL}/financial-growth",
+                params={"symbol": fmp_ticker, "apikey": FMP_API_KEY, "limit": 1},
+                headers=headers
+            )
+
+            growth = {}
+            if growth_resp.status_code == 200:
+                growth_data = growth_resp.json()
+                growth = growth_data[0] if isinstance(growth_data, list) and len(growth_data) > 0 else {}
+                print(f"✓ Financial Growth fetched")
+            else:
+                print(f"⚠️ Financial Growth API returned {growth_resp.status_code}")
     
             # ── 4. Historical Prices (1 year) ──
             hist_params = {
@@ -490,7 +504,7 @@ class KPICalculator:
                 'fullTimeEmployees': profile.get('fullTimeEmployeesCount') or profile.get('employees'),
                 'city': profile.get('city', ''),
                 'country': profile.get('country', ''),
-    
+
                 # Price data
                 'currentPrice': current_price,
                 'regularMarketPrice': current_price,
@@ -502,24 +516,24 @@ class KPICalculator:
                 'volume': profile.get('volAvg'),
                 'averageVolume': profile.get('volAvg'),
                 'marketCap': profile.get('mktCap'),
-    
-                # Valuation ratios from TTM ratios
-                'trailingPE': ratios.get('peRatioTTM'),
+
+                # Valuation ratios - CORRECTED field names
+                'trailingPE': ratios.get('priceToEarningsRatioTTM'),
                 'priceToBook': ratios.get('priceToBookRatioTTM'),
-    
-                # Profitability
-                'returnOnEquity': ratios.get('returnOnEquityTTM'),
+
+                # Profitability - CORRECTED field names
+                'returnOnEquity': metrics.get('returnOnEquityTTM'),
                 'profitMargins': ratios.get('netProfitMarginTTM'),
                 'operatingMargins': ratios.get('operatingProfitMarginTTM'),
-    
-                # Financial health
-                'debtToEquity': ratios.get('debtEquityRatioTTM'),
+
+                # Financial health - CORRECTED field names
+                'debtToEquity': ratios.get('debtToEquityRatioTTM'),
                 'currentRatio': ratios.get('currentRatioTTM'),
-    
-                # Growth (from key metrics)
-                'revenueGrowth': metrics.get('revenueGrowthTTM') or ratios.get('revenueGrowthTTM'),
-                'earningsGrowth': metrics.get('epsgrowthTTM') or metrics.get('epsGrowthTTM'),
-    
+
+                # Growth - from financial-growth endpoint (most recent year)
+                'revenueGrowth': growth.get('revenueGrowth') if growth else None,
+                'earningsGrowth': growth.get('epsgrowth') if growth else None,
+
                 # Technical
                 'beta': profile.get('beta'),
                 'dividendYield': ratios.get('dividendYieldTTM'),
