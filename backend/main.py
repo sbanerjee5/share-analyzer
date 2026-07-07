@@ -49,6 +49,12 @@ BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
 BREVO_LIST_ID = os.environ.get('BREVO_LIST_ID')
 FMP_API_KEY = os.environ.get('FMP_API_KEY')
 FMP_BASE_URL = "https://financialmodelingprep.com/stable"
+NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY')
+if NEWSAPI_KEY:
+    print("✓ NewsAPI key loaded from environment")
+else:
+    print("⚠️ WARNING: NewsAPI key not configured")
+
 if FMP_API_KEY:
     print("✓ FMP API key loaded from environment")
 else:
@@ -385,64 +391,80 @@ class KPICalculator:
             else:
                 print(f"⚠️ Historical prices API returned {hist_resp.status_code}")
     
-            # ── 5. News ──
-            news_params = {
-                "symbols": fmp_ticker,
-                "apikey": FMP_API_KEY,
-                "limit": 5
-            }
-    
-            news_resp = requests.get(
-                f"{FMP_BASE_URL}/news/stock",
-                params=news_params,
-                headers=headers
-            )
-    
+            
+            # ── 5. News (via NewsAPI.org) ──
             news = []
-            if news_resp.status_code == 200:
-                news_raw = news_resp.json()
-                if isinstance(news_raw, list):
-                    for article in news_raw[:5]:
+            try:
+                # Get company name for better search results
+                company_name = profile.get('companyName', ticker)
+                # Build search query
+                search_query = f"{company_name} {ticker} stock"
+                
+                news_resp = requests.get(
+                    "https://newsapi.org/v2/everything",
+                    params={
+                        "q": search_query,
+                        "language": "en",
+                        "pageSize": 5,
+                        "sortBy": "publishedAt",
+                        "apiKey": NEWSAPI_KEY
+                    }
+                )
+                
+                if news_resp.status_code == 200:
+                    news_data = news_resp.json()
+                    articles = news_data.get('articles', [])
+                    
+                    for article in articles[:5]:
                         title = article.get('title', 'No title available')
-                        if title:
-                            title = strip_html_tags(title)
-    
-                        summary = article.get('text') or article.get('summary') or None
-                        if summary:
-                            summary = strip_html_tags(summary)
-    
-                        pub_date = article.get('publishedDate', '')
+                        summary = article.get('description', None)
+                        publisher = article.get('source', {}).get('name', 'Unknown source')
+                        link = article.get('url', '')
+                        thumbnail = article.get('urlToImage', None)
+                        pub_date = article.get('publishedAt', '')
+                        
                         try:
                             from dateutil import parser as date_parser
                             pub_time = int(date_parser.parse(pub_date).timestamp()) if pub_date else int(datetime.now().timestamp())
                         except:
                             pub_time = int(datetime.now().timestamp())
-    
+                        
+                        if title:
+                            title = strip_html_tags(title)
+                        if summary:
+                            summary = strip_html_tags(summary)
+                        
                         sentiment_text = f"{title} {summary if summary else ''}"
                         sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
                         read_time = KPICalculator.calculate_read_time(summary if summary else title)
                         category = KPICalculator.classify_category(sentiment_text)
-    
+                        
                         news.append({
                             'title': title,
-                            'publisher': article.get('site', 'Unknown source'),
-                            'link': article.get('url', ''),
+                            'publisher': publisher,
+                            'link': link,
                             'publish_time': pub_time,
                             'type': 'article',
-                            'thumbnail': article.get('image', None),
+                            'thumbnail': thumbnail,
                             'summary': summary,
                             'sentiment': sentiment_result['sentiment'],
                             'sentiment_score': sentiment_result['score'],
                             'read_time': read_time,
                             'category': category
                         })
-                    print(f"✓ News fetched: {len(news)} articles")
-    
+                    
+                    print(f"✓ News fetched via NewsAPI: {len(news)} articles")
+                else:
+                    print(f"⚠️ NewsAPI returned {news_resp.status_code}")
+
+            except Exception as e:
+                print(f"⚠️ News fetch error: {e}")
+
             if not news:
                 news = [{
-                    'title': f'View latest news for {ticker} on Yahoo Finance',
-                    'publisher': 'Yahoo Finance',
-                    'link': f'https://finance.yahoo.com/quote/{ticker}/news',
+                    'title': f'Search latest {ticker} news on Google',
+                    'publisher': 'Google News',
+                    'link': f'https://www.google.com/search?q={ticker}+stock+news&tbm=nws',
                     'publish_time': int(datetime.now().timestamp()),
                     'type': 'link'
                 }]
@@ -522,7 +544,7 @@ class KPICalculator:
                 'priceToBook': ratios.get('priceToBookRatioTTM'),
 
                 # Profitability - CORRECTED field names
-                'returnOnEquity': metrics.get('returnOnEquityTTM'),
+                'returnOnEquity': metrics.get('returnOnEquityTTM') * 100 if metrics.get('returnOnEquityTTM') else None,
                 'profitMargins': ratios.get('netProfitMarginTTM'),
                 'operatingMargins': ratios.get('operatingProfitMarginTTM'),
 
@@ -1168,8 +1190,8 @@ class KPICalculator:
         # Get 12-month historical price data WITH MOVING AVERAGES
         historical_prices = []
         try:
-            hist_data = data.get('history')
-            if hist_data is not None and not hist_data.empty and 'Close' in hist_data.columns:
+            hist_data = data.get('historical_prices')
+            if hist_data is not None and len(hist_data) > 0:
                 hist_12m = hist_data.tail(252)
                 
                 # Calculate moving averages
@@ -1178,12 +1200,12 @@ class KPICalculator:
                 # 200-day MA  
                 ma_200 = hist_12m['Close'].rolling(window=200, min_periods=1).mean()
                 
-                for i, (date, row) in enumerate(hist_12m.iterrows()):
+                for i, price_point in enumerate(hist_data):
                     historical_prices.append({
-                        'date': date.strftime('%Y-%m-%d'),
-                        'price': round(float(row['Close']), 2),
-                        'ma_50': round(float(ma_50.iloc[i]), 2) if not pd.isna(ma_50.iloc[i]) else None,
-                        'ma_200': round(float(ma_200.iloc[i]), 2) if not pd.isna(ma_200.iloc[i]) else None
+                        'date': price_point.get('date', ''),
+                        'price': price_point.get('price', 0),
+                        'ma_50': price_point.get('ma_50'),
+                        'ma_200': price_point.get('ma_200')
                     })
                 print(f"Fetched {len(historical_prices)} historical price points with moving averages")
             else:
