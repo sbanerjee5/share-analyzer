@@ -284,7 +284,7 @@ class KPICalculator:
         # Fetch fresh data with Chrome impersonation
         try:
             from curl_cffi import requests as curl_requests
-            session = curl_requests.Session(impersonate="chrome")
+            session = curl_requests.Session(impersonate="chrome124")
             
             print(f"Fetching fresh data for {ticker}")
             stock = yf.Ticker(ticker, session=session)
