@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from numpy import info
 from pydantic import BaseModel
-import yfinance as yf
+# import yfinance as yf  # Replaced by FMP API
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import re
