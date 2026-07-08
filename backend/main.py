@@ -396,7 +396,7 @@ class KPICalculator:
             from datetime import date
             one_year_ago = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
             historical_prices_raw = [p for p in historical_prices_raw if p.get('date', '') >= one_year_ago]
-            
+
             # ── 5. News (via NewsAPI.org) ──
             news = []
             try:
@@ -494,7 +494,7 @@ class KPICalculator:
     
                     historical_prices.append({
                         'date': price_point.get('date', ''),
-                        'price': round(float(price_point.get('close', 0)), 2),
+                        'price': round(float(price_point.get('price') or price_point.get('close', 0)), 2),
                         'ma_50': round(ma_50, 2),
                         'ma_200': round(ma_200, 2)
                     })
