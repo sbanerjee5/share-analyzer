@@ -372,7 +372,8 @@ class KPICalculator:
                 "symbol": fmp_ticker,
                 "apikey": FMP_API_KEY,
                 "from": (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
-                "to": datetime.now().strftime('%Y-%m-%d')
+                "to": datetime.now().strftime('%Y-%m-%d'),
+                "limit": 365
             }
     
             hist_resp = requests.get(
@@ -391,6 +392,10 @@ class KPICalculator:
             else:
                 print(f"⚠️ Historical prices API returned {hist_resp.status_code}")
     
+            # Filter to last 12 months only
+            from datetime import date
+            one_year_ago = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            historical_prices_raw = [p for p in historical_prices_raw if p.get('date', '') >= one_year_ago]
             
             # ── 5. News (via NewsAPI.org) ──
             news = []
