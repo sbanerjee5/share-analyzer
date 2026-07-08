@@ -62,6 +62,28 @@ NEWS_QUERY_OVERRIDES = {
     "LLOY.L": '"Lloyds Bank" OR "Lloyds Banking Group" OR "Lloyds shares"',
 }
 
+# ── UK → US ADR mapping ─────────────────────────────────────────
+# For dual-listed UK companies, FMP's free tier has reliable data on
+# the US ADR ticker. Used as a fallback when LSE data is bad/missing.
+UK_ADR_MAP = {
+    "SHEL.L": "SHEL",    # Shell
+    "BP.L": "BP",        # BP
+    "GSK.L": "GSK",      # GSK
+    "AZN.L": "AZN",      # AstraZeneca
+    "ULVR.L": "UL",      # Unilever
+    "HSBA.L": "HSBC",    # HSBC
+    "BARC.L": "BCS",     # Barclays
+    "LLOY.L": "LYG",     # Lloyds
+    "NWG.L": "NWG",      # NatWest
+    "VOD.L": "VOD",      # Vodafone
+    "RIO.L": "RIO",      # Rio Tinto
+    "BATS.L": "BTI",     # British American Tobacco
+    "DGE.L": "DEO",      # Diageo
+    "NG.L": "NGG",       # National Grid
+    "PRU.L": "PUK",      # Prudential
+    "REL.L": "RELX",     # RELX
+}
+
 
 def build_news_query(ticker: str, company_name: str) -> str:
     """Build a NewsAPI search query. US: unchanged. UK: quoted company name."""
@@ -537,7 +559,34 @@ class KPICalculator:
                         'ma_50': round(ma_50, 2),
                         'ma_200': round(ma_200, 2)
                     })
-    
+
+            # ── 6b. Beta validation ──
+            # FMP's LSE data sometimes returns junk beta (e.g. -0.23 for Shell).
+            # A negative or extreme beta for a listed large-cap is almost
+            # certainly bad data. Try the US ADR's beta; otherwise null it.
+            beta_val = profile.get('beta')
+            if beta_val is not None and (beta_val <= 0 or beta_val > 4):
+                print(f"⚠️ Suspicious beta {beta_val} for {ticker}")
+                beta_val = None
+
+            if beta_val is None and ticker.upper() in UK_ADR_MAP:
+                adr_ticker = UK_ADR_MAP[ticker.upper()]
+                try:
+                    adr_resp = requests.get(
+                        f"{FMP_BASE_URL}/profile",
+                        params={"symbol": adr_ticker, "apikey": FMP_API_KEY},
+                        headers=headers
+                    )
+                    if adr_resp.status_code == 200:
+                        adr_data = adr_resp.json()
+                        adr_profile = adr_data[0] if isinstance(adr_data, list) and adr_data else {}
+                        adr_beta = adr_profile.get('beta')
+                        if adr_beta and 0 < adr_beta <= 4:
+                            beta_val = adr_beta
+                            print(f"✓ Using ADR ({adr_ticker}) beta: {beta_val}")
+                except Exception as e:
+                    print(f"⚠️ ADR beta fallback failed: {e}")
+
             # ── 7. Build unified info dict (same structure as yfinance) ──
             # Map FMP fields to the same field names your KPI calculator expects
             current_price = profile.get('price') or profile.get('lastPrice')
@@ -602,7 +651,7 @@ class KPICalculator:
                 'earningsGrowth': growth.get('epsgrowth') if growth else None,
 
                 # Technical
-                'beta': profile.get('beta'),
+                'beta': beta_val,
                 'dividendYield': ratios.get('dividendYieldTTM') or (
                     profile.get('lastDividend') / profile.get('price')
                     if profile.get('lastDividend') and profile.get('price')
