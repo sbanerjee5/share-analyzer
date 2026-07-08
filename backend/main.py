@@ -59,6 +59,7 @@ NEWS_QUERY_OVERRIDES = {
     "NG.L": '"National Grid"',
     "SBRY.L": '"Sainsbury"',
     "MKS.L": '"Marks & Spencer"',
+    "LLOY.L": '"Lloyds Bank" OR "Lloyds Banking Group" OR "Lloyds shares"',
 }
 
 
@@ -446,6 +447,7 @@ class KPICalculator:
                     "https://newsapi.org/v2/everything",
                     params={
                         "q": search_query,
+                        "searchIn": "title,description",
                         "language": "en",
                         "pageSize": 5,
                         "sortBy": "publishedAt",
