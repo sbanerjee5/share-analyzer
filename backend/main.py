@@ -638,11 +638,11 @@ class KPICalculator:
             if ticker_upper in known_ftse_100:
                 index_name = 'FTSE 100'
             # Then use market cap thresholds
-            elif market_cap > 7_000_000_000:  # > £7B
+            elif market_cap and market_cap > 7_000_000_000:
                 index_name = 'FTSE 100'
-            elif market_cap > 500_000_000:  # £500M - £7B
+            elif market_cap and market_cap > 500_000_000:  # £500M - £7B
                 index_name = 'FTSE 250'
-            elif market_cap > 0:  # < £500M
+            elif market_cap and market_cap > 0:  # < £500M
                 index_name = 'FTSE Small Cap / AIM'
 
         
@@ -651,13 +651,13 @@ class KPICalculator:
             # Convert market cap to billions for easier comparison
             market_cap_b = market_cap / 1_000_000_000
             
-            if market_cap_b > 15:  # > $15B
+            if market_cap and market_cap_b > 15:  # > $15B
                 index_name = 'S&P 500'
-            elif market_cap_b > 2:  # $2B - $15B
+            elif market_cap and market_cap_b > 2:  # $2B - $15B
                 index_name = 'S&P 400 (Mid Cap)'
-            elif market_cap_b > 0.3:  # $300M - $2B
+            elif market_cap and market_cap_b > 0.3:  # $300M - $2B
                 index_name = 'S&P 600 (Small Cap)'
-            elif market_cap > 0:  # < $300M
+            elif market_cap and market_cap > 0:  # < $300M
                 index_name = 'Micro Cap'
         
         return {
