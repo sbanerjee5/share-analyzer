@@ -565,9 +565,10 @@ class KPICalculator:
                 # Technical
                 'beta': profile.get('beta'),
                 'dividendYield': ratios.get('dividendYieldTTM') or (
-                    profile.get('lastAnnualDividend') / profile.get('price') 
-                    if profile.get('lastAnnualDividend') and profile.get('price') 
-                    else None),
+                    profile.get('lastDividend') / profile.get('price')
+                    if profile.get('lastDividend') and profile.get('price')
+                    else None
+                ),
             }
     
             data = {
