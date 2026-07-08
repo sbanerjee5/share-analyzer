@@ -40,6 +40,43 @@ def strip_html_tags(text):
     clean_text = ' '.join(clean_text.split())
     
     return clean_text.strip()
+# ── News query builder ──────────────────────────────────────────
+# UK articles reference company names, not tickers, so for .L stocks
+# we search by quoted company name instead of ticker.
+
+NEWS_QUERY_OVERRIDES = {
+    "SHEL.L": '"Shell plc" OR "SHEL"',   # bare "Shell" matches petrol stations etc.
+    "III.L": '"3i Group"',
+    "AV.L": '"Aviva"',
+    "BT-A.L": '"BT Group"',
+    "MNG.L": '"M&G"',
+    "REL.L": '"RELX"',
+    "SN.L": '"Smith & Nephew"',
+    "TW.L": '"Taylor Wimpey"',
+    "JD.L": '"JD Sports"',
+    "BA.L": '"BAE Systems"',
+    "RR.L": '"Rolls-Royce"',
+    "NG.L": '"National Grid"',
+    "SBRY.L": '"Sainsbury"',
+    "MKS.L": '"Marks & Spencer"',
+}
+
+
+def build_news_query(ticker: str, company_name: str) -> str:
+    """Build a NewsAPI search query. US: unchanged. UK: quoted company name."""
+    if not ticker.endswith('.L'):
+        # US stocks - keep existing behaviour, it works
+        return f"{company_name} {ticker} stock"
+
+    # UK stocks - check override map first
+    if ticker.upper() in NEWS_QUERY_OVERRIDES:
+        return NEWS_QUERY_OVERRIDES[ticker.upper()]
+
+    # Strip trailing "PLC"/"plc" - headlines say "Lloyds Banking Group", not "... PLC"
+    name = re.sub(r'\s+plc\.?$', '', company_name, flags=re.IGNORECASE).strip()
+
+    # Quoted = exact phrase match in NewsAPI
+    return f'"{name}"'
 
 # Email capture configuration
 EMAIL_FILE = "captured_emails.json"
@@ -402,10 +439,8 @@ class KPICalculator:
             try:
                 # Get company name for better search results
                 company_name = profile.get('companyName', ticker)
-                # Build search query
-                # Remove .L suffix for UK stocks for better news search results
-                clean_ticker = ticker.replace('.L', '') if ticker.endswith('.L') else ticker
-                search_query = f"{company_name} {clean_ticker} stock"
+                search_query = build_news_query(ticker, company_name)
+                print(f"News search query: {search_query}") 
                 
                 news_resp = requests.get(
                     "https://newsapi.org/v2/everything",
