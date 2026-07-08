@@ -505,9 +505,10 @@ class KPICalculator:
             
             # 52-week high/low from historical prices
             if historical_prices_raw:
-                closes_year = [p.get('close', 0) for p in historical_prices_raw]
-                fifty_two_week_high = max(closes_year)
-                fifty_two_week_low = min(closes_year)
+                closes_year = [p.get('price') or p.get('close', 0) for p in historical_prices_raw]
+                closes_year = [c for c in closes_year if c > 0]  # Filter out zeros
+                fifty_two_week_high = max(closes_year) if closes_year else None
+                fifty_two_week_low = min(closes_year) if closes_year else None
             else:
                 fifty_two_week_high = profile.get('range', '').split('-')[-1].strip() if profile.get('range') else None
                 fifty_two_week_low = profile.get('range', '').split('-')[0].strip() if profile.get('range') else None
