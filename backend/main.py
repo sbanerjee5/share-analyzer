@@ -403,7 +403,9 @@ class KPICalculator:
                 # Get company name for better search results
                 company_name = profile.get('companyName', ticker)
                 # Build search query
-                search_query = f"{company_name} {ticker} stock"
+                # Remove .L suffix for UK stocks for better news search results
+                clean_ticker = ticker.replace('.L', '') if ticker.endswith('.L') else ticker
+                search_query = f"{company_name} {clean_ticker} stock"
                 
                 news_resp = requests.get(
                     "https://newsapi.org/v2/everything",
