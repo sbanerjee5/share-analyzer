@@ -477,7 +477,7 @@ class KPICalculator:
             # ── 6. Calculate Moving Averages for historical prices ──
             historical_prices = []
             if historical_prices_raw:
-                closes = [p.get('close', 0) for p in historical_prices_raw]
+                closes = [p.get('price') or p.get('close', 0) for p in historical_prices_raw]
     
                 for i, price_point in enumerate(historical_prices_raw):
                     # 50-day MA
