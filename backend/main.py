@@ -1579,8 +1579,31 @@ def analyze_stock(request: AnalysisRequest):
         print(f"Historical prices count: {len(analysis.get('historical_prices', []))}")
         
         # Generate recommendation
+        # Generate recommendation - only if we have real data to base it on
         print("Step 2: Generating recommendation...")
-        recommendation = engine.generate_recommendation(analysis['kpis'])
+
+        # Count KPIs that actually have values
+        kpi_values = [
+            kpi['value']
+            for category in analysis['kpis'].values()
+            for kpi in category.values()
+        ]
+        available = sum(1 for v in kpi_values if v is not None)
+        print(f"KPIs with data: {available}/{len(kpi_values)}")
+
+        if available < 6:
+            # Too little data for an honest rating
+            recommendation = {
+                'recommendation': 'INSUFFICIENT DATA',
+                'score': None,
+                'color': 'gray',
+                'message': 'Not enough financial data available to generate an analysis rating for this stock',
+                'category_scores': {}
+            }
+            data_limited = True
+        else:
+            recommendation = engine.generate_recommendation(analysis['kpis'])
+            data_limited = False
         print("Step 2: Complete ✓")
         
         print(f"✓ Analysis complete")
@@ -1589,6 +1612,7 @@ def analyze_stock(request: AnalysisRequest):
         
         return {
             'success': True,
+            'data_limited': data_limited,
             'timestamp': datetime.now().isoformat(),
             'company': {
                 'name': analysis['company_name'],
