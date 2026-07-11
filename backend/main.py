@@ -565,7 +565,7 @@ class KPICalculator:
             # A negative or extreme beta for a listed large-cap is almost
             # certainly bad data. Try the US ADR's beta; otherwise null it.
             beta_val = profile.get('beta')
-            if beta_val is not None and (beta_val <= 0 or beta_val > 4):
+            if beta_val is not None and (beta_val < -1.5 or beta_val > 4):
                 print(f"⚠️ Suspicious beta {beta_val} for {ticker}")
                 beta_val = None
 
@@ -581,7 +581,7 @@ class KPICalculator:
                         adr_data = adr_resp.json()
                         adr_profile = adr_data[0] if isinstance(adr_data, list) and adr_data else {}
                         adr_beta = adr_profile.get('beta')
-                        if adr_beta and 0 < adr_beta <= 4:
+                        if adr_beta is not None and -1.5 <= adr_beta <= 4:
                             beta_val = adr_beta
                             print(f"✓ Using ADR ({adr_ticker}) beta: {beta_val}")
                 except Exception as e:
@@ -1163,6 +1163,19 @@ class KPICalculator:
     
         # 10. Beta (Volatility measure)
         beta = self.safe_get(info, 'beta')
+        # === ANOMALY DETECTION - START ===
+        if beta is not None and beta < 0:
+            anomalies.append({
+                'metric': 'Beta',
+                'anomaly': {
+                    'type': 'negative',
+                    'severity': 'medium',
+                    'message': 'Negative beta - stock has recently moved opposite to the market',
+                    'context': f'Beta of {round(beta, 2)} means this stock has tended to rise when the broader market falls, and vice versa, over the measurement period. This is rare but occurs with energy stocks during oil supply shocks, when commodity prices decouple from equity markets.',
+                    'investor_note': 'Negative beta can make a stock useful for diversification, but it usually reflects a temporary market regime rather than a permanent characteristic. Expect it to normalize as conditions change.'
+                }
+            })
+        # === ANOMALY DETECTION - END ===
         beta_score = self.calculate_score(
             abs(beta - 1.0) if beta else 999,
             [(0.2, 10), (0.5, 8), (0.8, 6), (1.5, 4), (999, 2)]
