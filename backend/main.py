@@ -45,7 +45,7 @@ def strip_html_tags(text):
 # we search by quoted company name instead of ticker.
 
 NEWS_QUERY_OVERRIDES = {
-    "SHEL.L": '"Shell plc" OR "SHEL"',   # bare "Shell" matches petrol stations etc.
+    "SHEL.L": '"Shell plc" OR "Shell stock" OR "Shell shares"',   # avoid bare "Shell" and "SHEL" (matches Hebrew "shel")
     "III.L": '"3i Group"',
     "AV.L": '"Aviva"',
     "BT-A.L": '"BT Group"',
@@ -471,7 +471,7 @@ class KPICalculator:
                         "q": search_query,
                         "searchIn": "title,description",
                         "language": "en",
-                        "pageSize": 5,
+                        "pageSize": 10,
                         "sortBy": "publishedAt",
                         "apiKey": NEWSAPI_KEY
                     }
@@ -480,6 +480,12 @@ class KPICalculator:
                 if news_resp.status_code == 200:
                     news_data = news_resp.json()
                     articles = news_data.get('articles', [])
+                    
+                    # Prefer articles with images (better UI), keep original
+                    # recency order within each group, then take top 5
+                    with_image = [a for a in articles if a.get('urlToImage')]
+                    without_image = [a for a in articles if not a.get('urlToImage')]
+                    articles = with_image + without_image
                     
                     for article in articles[:5]:
                         title = article.get('title', 'No title available')
