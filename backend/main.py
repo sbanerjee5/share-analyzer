@@ -61,11 +61,11 @@ NEWS_QUERY_OVERRIDES = {
     "MKS.L": '"Marks & Spencer"',
     "LLOY.L": '"Lloyds Bank" OR "Lloyds Banking Group" OR "Lloyds shares"',
     # US stocks with generic-word names
-    "TGT": '"Target Corporation" OR "TGT"',
-    "SQ": '"Block Inc" OR "SQ stock"',
+    "TGT": '"Target Corporation" OR "Target stock" OR "NYSE:TGT"',
+    "SQ": '"Block Inc" OR "Square parent"',
     "T": '"AT&T"',
-    "V": '"Visa" OR "V stock"',
-    "GE": '"General Electric" OR "GE stock"',
+    "V": '"Visa"',
+    "GE": '"General Electric" OR "GE Aerospace"',
     "ALL": '"Allstate"',
 }
 
