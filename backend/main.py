@@ -361,9 +361,20 @@ class KPICalculator:
             fmp_ticker = ticker
             if ticker.endswith('.L'):
                 fmp_ticker = ticker
-    
+
+            # For UK stocks with a US ADR, fetch fundamentals & prices from
+            # the ADR symbol - FMP free tier serves US data but 402s on LSE.
+            # Profile stays on the .L ticker (works fine, correct LSE price).
+            data_symbol = fmp_ticker
+            using_adr = False
+            if ticker.endswith('.L') and ticker.upper() in UK_ADR_MAP:
+                data_symbol = UK_ADR_MAP[ticker.upper()]
+                using_adr = True
+                print(f"→ Using US ADR {data_symbol} for fundamentals/prices")
+
             headers = {"Content-Type": "application/json"}
             params = {"symbol": fmp_ticker, "apikey": FMP_API_KEY}
+            data_params = {"symbol": data_symbol, "apikey": FMP_API_KEY}
     
             # ── 1. Company Profile (price, market cap, sector, description etc.) ──
             profile_resp = requests.get(
@@ -386,7 +397,7 @@ class KPICalculator:
             # ── 2. TTM Ratios (P/E, P/B, ROE, margins, debt etc.) ──
             ratios_resp = requests.get(
                 f"{FMP_BASE_URL}/ratios-ttm",
-                params=params,
+                params=data_params,
                 headers=headers
             )
     
@@ -401,7 +412,7 @@ class KPICalculator:
             # ── 3. Key Metrics TTM (EPS growth, revenue growth, beta etc.) ──
             metrics_resp = requests.get(
                 f"{FMP_BASE_URL}/key-metrics-ttm",
-                params=params,
+                params=data_params,
                 headers=headers
             )
     
@@ -415,7 +426,7 @@ class KPICalculator:
             # ── 3b. Financial Growth (revenue growth, EPS growth) ──
             growth_resp = requests.get(
                 f"{FMP_BASE_URL}/financial-growth",
-                params={"symbol": fmp_ticker, "apikey": FMP_API_KEY, "limit": 1},
+                params={"symbol": data_symbol, "apikey": FMP_API_KEY, "limit": 1},
                 headers=headers
             )
 
@@ -429,7 +440,7 @@ class KPICalculator:
     
             # ── 4. Historical Prices (1 year) ──
             hist_params = {
-                "symbol": fmp_ticker,
+                "symbol": data_symbol,
                 "apikey": FMP_API_KEY,
                 "from": (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d'),
                 "to": datetime.now().strftime('%Y-%m-%d'),
@@ -659,6 +670,13 @@ class KPICalculator:
 
                 # Technical
                 'beta': beta_val,
+                # When using ADR history, 52w high/low are in USD - store the
+                # ADR's latest close so Price Position compares like with like
+                'adrLastClose': (
+                    (historical_prices_raw[-1].get('price') or historical_prices_raw[-1].get('close'))
+                    if (using_adr and historical_prices_raw) else None
+                ),
+                'usingAdrData': using_adr,
                 'dividendYield': ratios.get('dividendYieldTTM') or (
                     profile.get('lastDividend') / profile.get('price')
                     if profile.get('lastDividend') and profile.get('price')
@@ -1192,8 +1210,11 @@ class KPICalculator:
         fifty_two_week_high = self.safe_get(info, 'fiftyTwoWeekHigh')
         fifty_two_week_low = self.safe_get(info, 'fiftyTwoWeekLow')
 
-        if current_price and fifty_two_week_high and fifty_two_week_low:
-            price_position = ((current_price - fifty_two_week_low) / 
+        # Use ADR close for position calc when 52w range comes from ADR data
+        position_price = self.safe_get(info, 'adrLastClose') or current_price
+
+        if position_price and fifty_two_week_high and fifty_two_week_low:
+            price_position = ((position_price - fifty_two_week_low) / 
                             (fifty_two_week_high - fifty_two_week_low)) * 100
             
             # Score based on distance from 50% (middle is best, extremes are risky)
