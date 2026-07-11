@@ -60,6 +60,13 @@ NEWS_QUERY_OVERRIDES = {
     "SBRY.L": '"Sainsbury"',
     "MKS.L": '"Marks & Spencer"',
     "LLOY.L": '"Lloyds Bank" OR "Lloyds Banking Group" OR "Lloyds shares"',
+    # US stocks with generic-word names
+    "TGT": '"Target Corporation" OR "TGT"',
+    "SQ": '"Block Inc" OR "SQ stock"',
+    "T": '"AT&T"',
+    "V": '"Visa" OR "V stock"',
+    "GE": '"General Electric" OR "GE stock"',
+    "ALL": '"Allstate"',
 }
 
 # ── UK → US ADR mapping ─────────────────────────────────────────
@@ -86,10 +93,17 @@ UK_ADR_MAP = {
 
 
 def build_news_query(ticker: str, company_name: str) -> str:
-    """Build a NewsAPI search query. US: unchanged. UK: quoted company name."""
+    """Build a NewsAPI search query: quoted company name OR ticker."""
     if not ticker.endswith('.L'):
-        # US stocks - keep existing behaviour, it works
-        return f"{company_name} {ticker} stock"
+        # US stocks - check override map first
+        if ticker.upper() in NEWS_QUERY_OVERRIDES:
+            return NEWS_QUERY_OVERRIDES[ticker.upper()]
+
+        # Strip share-class and legal suffixes: "Alphabet Inc. Class A" -> "Alphabet"
+        name = re.sub(r'\s+Class\s+[A-C]$', '', company_name, flags=re.IGNORECASE)
+        name = re.sub(r'[\s,]+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.?|Ltd\.?|Limited|plc|PLC)$', '', name, flags=re.IGNORECASE).strip()
+
+        return f'"{name}" OR "{ticker}"'
 
     # UK stocks - check override map first
     if ticker.upper() in NEWS_QUERY_OVERRIDES:
