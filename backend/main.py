@@ -470,6 +470,7 @@ class KPICalculator:
                     params={
                         "q": search_query,
                         "searchIn": "title,description",
+                        "excludeDomains": "biztoc.com",
                         "language": "en",
                         "pageSize": 10,
                         "sortBy": "publishedAt",
@@ -486,7 +487,7 @@ class KPICalculator:
                     with_image = [a for a in articles if a.get('urlToImage')]
                     without_image = [a for a in articles if not a.get('urlToImage')]
                     articles = with_image + without_image
-                    
+
                     for article in articles[:5]:
                         title = article.get('title', 'No title available')
                         summary = article.get('description', None)
