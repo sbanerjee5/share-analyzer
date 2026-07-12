@@ -109,8 +109,11 @@ def build_news_query(ticker: str, company_name: str) -> str:
     if ticker.upper() in NEWS_QUERY_OVERRIDES:
         return NEWS_QUERY_OVERRIDES[ticker.upper()]
 
-    # Strip trailing "PLC"/"plc" - headlines say "Lloyds Banking Group", not "... PLC"
-    name = re.sub(r'\s+plc\.?$', '', company_name, flags=re.IGNORECASE).strip()
+    # Strip trailing legal suffix in all its forms: PLC, plc., p.l.c., Ltd, Limited
+    name = re.sub(
+        r'[\s,]+(p\.?\s?l\.?\s?c\.?|plc\.?|ltd\.?|limited)$',
+        '', company_name, flags=re.IGNORECASE
+    ).strip()
 
     # Quoted = exact phrase match in NewsAPI
     return f'"{name}"'
@@ -488,25 +491,39 @@ class KPICalculator:
                 # Get company name for better search results
                 company_name = profile.get('companyName', ticker)
                 search_query = build_news_query(ticker, company_name)
-                print(f"News search query: {search_query}") 
-                
+                print(f"News search query: {search_query}")
+
+                news_params = {
+                    "q": search_query,
+                    "searchIn": "title,description",
+                    "excludeDomains": "biztoc.com",
+                    "language": "en",
+                    "pageSize": 10,
+                    "sortBy": "publishedAt",
+                    "apiKey": NEWSAPI_KEY
+                }
+
                 news_resp = requests.get(
                     "https://newsapi.org/v2/everything",
-                    params={
-                        "q": search_query,
-                        "searchIn": "title,description",
-                        "excludeDomains": "biztoc.com",
-                        "language": "en",
-                        "pageSize": 10,
-                        "sortBy": "publishedAt",
-                        "apiKey": NEWSAPI_KEY
-                    }
+                    params=news_params
                 )
-                
+
+                articles = []
                 if news_resp.status_code == 200:
-                    news_data = news_resp.json()
-                    articles = news_data.get('articles', [])
-                    
+                    articles = news_resp.json().get('articles', [])
+
+                # Fallback: nothing in titles/descriptions - search full text
+                if not articles:
+                    print("No title/description matches - retrying full-text search")
+                    news_params.pop("searchIn", None)
+                    news_resp = requests.get(
+                        "https://newsapi.org/v2/everything",
+                        params=news_params
+                    )
+                    if news_resp.status_code == 200:
+                        articles = news_resp.json().get('articles', [])
+
+                if articles:
                     # Prefer articles with images (better UI), keep original
                     # recency order within each group, then take top 5
                     with_image = [a for a in articles if a.get('urlToImage')]
@@ -520,23 +537,23 @@ class KPICalculator:
                         link = article.get('url', '')
                         thumbnail = article.get('urlToImage', None)
                         pub_date = article.get('publishedAt', '')
-                        
+
                         try:
                             from dateutil import parser as date_parser
                             pub_time = int(date_parser.parse(pub_date).timestamp()) if pub_date else int(datetime.now().timestamp())
                         except:
                             pub_time = int(datetime.now().timestamp())
-                        
+
                         if title:
                             title = strip_html_tags(title)
                         if summary:
                             summary = strip_html_tags(summary)
-                        
+
                         sentiment_text = f"{title} {summary if summary else ''}"
                         sentiment_result = KPICalculator.analyze_sentiment(sentiment_text)
                         read_time = KPICalculator.calculate_read_time(summary if summary else title)
                         category = KPICalculator.classify_category(sentiment_text)
-                        
+
                         news.append({
                             'title': title,
                             'publisher': publisher,
@@ -550,10 +567,10 @@ class KPICalculator:
                             'read_time': read_time,
                             'category': category
                         })
-                    
+
                     print(f"✓ News fetched via NewsAPI: {len(news)} articles")
                 else:
-                    print(f"⚠️ NewsAPI returned {news_resp.status_code}")
+                    print(f"⚠️ No articles found (last status: {news_resp.status_code})")
 
             except Exception as e:
                 print(f"⚠️ News fetch error: {e}")
