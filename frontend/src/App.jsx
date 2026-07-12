@@ -435,12 +435,14 @@ const ShareAnalyzer = () => {
   const getRecommendationIcon = (rec) => {
     if (rec === 'BUY') return <TrendingUp className="w-8 h-8" />;
     if (rec === 'SELL') return <TrendingDown className="w-8 h-8" />;
+    if (rec === 'INSUFFICIENT DATA') return <AlertCircle className="w-8 h-8" />;
     return <Minus className="w-8 h-8" />;
   };
 
   const getRecommendationColor = (rec) => {
     if (rec === 'BUY') return 'from-green-500 to-emerald-600';
     if (rec === 'SELL') return 'from-red-500 to-rose-600';
+    if (rec === 'INSUFFICIENT DATA') return 'from-gray-600 to-gray-700';
     return 'from-yellow-500 to-amber-600';
   };
 
@@ -875,10 +877,12 @@ const ShareAnalyzer = () => {
                     <div className="text-4xl font-bold">{analysis.recommendation.recommendation}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm opacity-90 mb-1">OVERALL SCORE</div>
-                  <div className="text-5xl font-bold">{analysis.recommendation.score}/100</div>
-                </div>
+                {analysis.recommendation.score !== null && (
+                  <div className="text-right">
+                    <div className="text-sm opacity-90 mb-1">OVERALL SCORE</div>
+                    <div className="text-5xl font-bold">{analysis.recommendation.score}/100</div>
+                  </div>
+                )}
               </div>
               <p className="mt-4 text-lg opacity-90">{analysis.recommendation.message}</p>
             </div>
@@ -1392,6 +1396,35 @@ const ShareAnalyzer = () => {
             
             {/* KPI Sections */}
             <div className="space-y-6">
+
+              {/* UK data-limited: coming soon card instead of N/A wall */}
+              {analysis.data_limited && (
+                <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/50 rounded-xl p-8 text-center">
+                  <div className="text-4xl mb-3">🇬🇧</div>
+                  <h3 className="text-2xl font-bold text-blue-300 mb-3">
+                    Full KPI Analysis Coming Soon for UK Stocks
+                  </h3>
+                  <p className="text-gray-300 max-w-2xl mx-auto leading-relaxed">
+                    Detailed fundamental metrics for UK stocks (valuation, profitability,
+                    financial health, and growth) require premium market data — we're
+                    working on bringing this to Smart Stock Insights. Meanwhile, explore
+                    the company overview, latest news, and the market metrics below.
+                  </p>
+                  <p className="mt-4 text-sm text-blue-300">
+                    Want UK fundamentals sooner?{' '}
+                    
+                      href="mailto:hello@smartstockinsights.com?subject=UK%20KPIs%20request"
+                      className="underline hover:text-blue-200"
+                    <a>
+                      Let us know
+                    </a>{' '}
+                    — it helps us prioritise.
+                  </p>
+                </div>
+              )}
+
+              {!analysis.data_limited && (
+              <>
               {/* Valuation */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
                 <div className="mb-6">
@@ -1541,15 +1574,19 @@ const ShareAnalyzer = () => {
                   />
                 </div>
               </div>
+              </>
+              )}
 
               {/* Technical */}
               <div className="bg-gray-800/30 rounded-xl p-6 border border-gray-700">
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="text-2xl font-bold text-orange-400">Technical & Market</h3>
-                    <div className="text-lg">
-                      Score: <span className="font-bold">{analysis.recommendation.category_scores.technical}/10</span>
-                    </div>
+                    {analysis.recommendation.category_scores?.technical !== undefined && (
+                      <div className="text-lg">
+                        Score: <span className="font-bold">{analysis.recommendation.category_scores.technical}/10</span>
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm text-gray-400 italic">Understand market sentiment, volatility, and income potential</p>
                 </div>
@@ -1589,6 +1626,7 @@ const ShareAnalyzer = () => {
             </div>
 
             {/* PDF Download Button */}
+            {!analysis.data_limited && (
             <div className="flex justify-center pt-8">
               <button
                 onClick={generatePDF}
@@ -1598,6 +1636,7 @@ const ShareAnalyzer = () => {
                 Download PDF Report
               </button>
             </div>
+            )}
 
             {/* Bottom Disclaimer - Keep but simplified */}
             <div className="mt-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
