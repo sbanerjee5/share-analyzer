@@ -1400,7 +1400,7 @@ const ShareAnalyzer = () => {
               {/* UK data-limited: coming soon card instead of N/A wall */}
               {analysis.data_limited && (
                 <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-blue-500/50 rounded-xl p-8 text-center">
-                  <div className="text-4xl mb-3">🇬🇧</div>
+                  <div className="text-4xl mb-3">📊</div>
                   <h3 className="text-2xl font-bold text-blue-300 mb-3">
                     Full KPI Analysis Coming Soon for UK Stocks
                   </h3>
@@ -1412,10 +1412,10 @@ const ShareAnalyzer = () => {
                   </p>
                   <p className="mt-4 text-sm text-blue-300">
                     Want UK fundamentals sooner?{' '}
-                    
+                    <a
                       href="mailto:hello@smartstockinsights.com?subject=UK%20KPIs%20request"
                       className="underline hover:text-blue-200"
-                    <a>
+                    >
                       Let us know
                     </a>{' '}
                     — it helps us prioritise.
